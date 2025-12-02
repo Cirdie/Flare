@@ -14,8 +14,19 @@
     <color name="background_color">#FFFFFF</color>
     <color name="text_color">#000000</color>
 
+    <color name="teal_200">#03DAC5</color>
+    <color name="transparent">#00000000</color>
+
+
     <color name="background_sms">#E87F2E</color>
 
+    <!-- Severity palette -->
+    <color name="md_theme_red">#D32F2F</color>      <!-- Fire -->
+    <color name="md_theme_blue">#1E88E5</color>     <!-- EMS -->
+    <color name="md_theme_orange">#FB8C00</color>   <!-- Other -->
 
+    <!-- Material Green 500 -->
+    <color name="green_500">#4CAF50</color>
+    <color name="yellow_400">#FFFF00</color>
 
 </resources>

@@ -87,4 +87,6 @@
         <item>Hazardous Material (e.g. Gas Leak)</item>
     </string-array>
 
+    <string name="write_feedback">Feedback</string>
+
 </resources>

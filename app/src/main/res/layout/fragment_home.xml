@@ -23,6 +23,46 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"/>
+        <!-- Notifications icon (NO MENU) -->
+
+        <ImageView
+            android:id="@+id/iv_notifications"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:padding="12dp"
+            android:src="@drawable/notification"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:tint="?attr/colorOnSurface"
+            app:layout_constraintTop_toTopOf="@id/topAppBar"
+            app:layout_constraintBottom_toBottomOf="@id/topAppBar"
+            app:layout_constraintEnd_toEndOf="@id/topAppBar"
+            android:layout_marginEnd="4dp"/>
+
+        <!-- Badge bubble -->
+        <TextView
+            android:id="@+id/badge_notifications"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="18dp"
+            android:paddingLeft="4dp"
+            android:paddingRight="4dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
+            android:text="0"
+            android:layout_marginTop="6dp"
+            android:layout_marginRight="6dp"
+            android:visibility="gone"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:textColor="@android:color/white"
+            android:background="@drawable/bg_badge"
+
+            app:layout_constraintEnd_toEndOf="@id/iv_notifications"
+            app:layout_constraintTop_toTopOf="@id/iv_notifications"
+            android:translationX="8dp"
+            android:translationY="-6dp"/>
+
 
         <!-- Logo (kept your id) -->
         <ImageView
@@ -73,69 +113,69 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:useDefaultMargins="true">
 
-        <!-- Fire Report Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/fire_button"
-            android:layout_width="304dp"
-            android:layout_height="56dp"
-            app:layout_gravity="center"
-            android:text="Fire Report"
-            android:textAllCaps="false"
-            android:contentDescription="Report a fire"
-            app:icon="@drawable/ic_fire_24"
-            app:iconPadding="8dp"
-            app:iconGravity="textStart"
-            app:cornerRadius="28dp"
-            android:backgroundTint="#E00024"
-            android:textColor="?attr/colorOnPrimary" />
+            <!-- Fire Report Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/fire_button"
+                android:layout_width="304dp"
+                android:layout_height="56dp"
+                app:layout_gravity="center"
+                android:text="Fire Report"
+                android:textAllCaps="false"
+                android:contentDescription="Report a fire"
+                app:icon="@drawable/ic_fire_24"
+                app:iconPadding="8dp"
+                app:iconGravity="textStart"
+                app:cornerRadius="28dp"
+                android:backgroundTint="#E00024"
+                android:textColor="?attr/colorOnPrimary" />
 
-        <!-- Other Report Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/other_button"
-            android:layout_width="304dp"
-            android:layout_height="56dp"
-            app:layout_gravity="center"
-            android:text="Other Emergency Report"
-            android:textAllCaps="false"
-            android:contentDescription="Report other emergency"
-            app:icon="@drawable/ic_warning_24"
-            app:iconPadding="8dp"
-            app:iconGravity="textStart"
-            app:cornerRadius="28dp"
-            android:backgroundTint="#E87F2E"
-            android:textColor="?attr/colorOnSecondary" />
+            <!-- Other Report Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/other_button"
+                android:layout_width="304dp"
+                android:layout_height="56dp"
+                app:layout_gravity="center"
+                android:text="Other Emergency Report"
+                android:textAllCaps="false"
+                android:contentDescription="Report other emergency"
+                app:icon="@drawable/ic_warning_24"
+                app:iconPadding="8dp"
+                app:iconGravity="textStart"
+                app:cornerRadius="28dp"
+                android:backgroundTint="#E87F2E"
+                android:textColor="?attr/colorOnSecondary" />
 
-        <!-- Emergency Medical Services Report Button (spans across full width) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/accident_button"
-            android:layout_width="304dp"
-            android:layout_height="56dp"
-            android:minWidth="0dp"
-            android:text="Emergency Medical Services Report"
-            android:textAllCaps="false"
-            android:contentDescription="Report a vehicle accident"
-            app:icon="@drawable/ic_car_crash_24"
-            app:iconPadding="8dp"
-            app:iconGravity="textStart"
-            app:cornerRadius="28dp"
-            android:backgroundTint="#f6f007"
-            app:iconTint="@color/black"
-            android:textColor="@color/black"
-            android:layout_marginTop="8dp"
-            app:layout_gravity="center" />
+            <!-- Emergency Medical Services Report Button (spans across full width) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/accident_button"
+                android:layout_width="304dp"
+                android:layout_height="56dp"
+                android:minWidth="0dp"
+                android:text="Emergency Medical Services Report"
+                android:textAllCaps="false"
+                android:contentDescription="Report a vehicle accident"
+                app:icon="@drawable/ic_car_crash_24"
+                app:iconPadding="8dp"
+                app:iconGravity="textStart"
+                app:cornerRadius="28dp"
+                android:backgroundTint="#f6f007"
+                app:iconTint="@color/black"
+                android:textColor="@color/black"
+                android:layout_marginTop="8dp"
+                app:layout_gravity="center" />
 
-    </androidx.gridlayout.widget.GridLayout>
+        </androidx.gridlayout.widget.GridLayout>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!-- Navigation Drawer -->
-<com.google.android.material.navigation.NavigationView
-android:id="@+id/nav_view"
-android:layout_width="wrap_content"
-android:layout_height="match_parent"
-android:layout_gravity="start"
-app:itemIconTint="?attr/colorOnSurface"
-app:itemTextColor="?attr/colorOnSurface"
-app:headerLayout="@layout/drawer_header"
-app:menu="@menu/drawer_menu"/>
-    </androidx.drawerlayout.widget.DrawerLayout>
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        app:itemIconTint="?attr/colorOnSurface"
+        app:itemTextColor="?attr/colorOnSurface"
+        app:headerLayout="@layout/drawer_header"
+        app:menu="@menu/drawer_menu"/>
+</androidx.drawerlayout.widget.DrawerLayout>
