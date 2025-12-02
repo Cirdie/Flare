@@ -19,6 +19,7 @@
     <string name="content_desc_my_report_icon">My report</string>
     <string name="content_desc_logout_icon">Logout</string>
     <string name="content_desc_navigate">Navigate</string>
+    <string name="get_started">Get Started</string>
 
     <string name="content_desc_dark_mode_icon">Dark mode</string>
     <string name="content_desc_about_icon">About</string>
@@ -88,5 +89,7 @@
     </string-array>
 
     <string name="write_feedback">Feedback</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 
 </resources>

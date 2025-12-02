@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    app:startDestination="@id/mainFragment">
+
+    <!-- Main Fragment (Landing page) -->
+    <fragment
+        android:id="@+id/mainFragment"
+        android:name="com.example.flare_capstone.views.auth.MainFragment"
+        android:label="Main Fragment"
+        tools:layout="@layout/fragment_main">
+
+        <!-- Actions for navigating to Login, Register, SMS Fragment, and Fire Station Info -->
+        <action
+            android:id="@+id/action_mainFragment_to_loginFragment"
+            app:destination="@id/loginFragment" />
+
+        <action
+            android:id="@+id/action_mainFragment_to_registerFragment"
+            app:destination="@id/registerFragment" />
+
+        <action
+            android:id="@+id/action_mainFragment_to_smsFragment"
+            app:destination="@id/smsFragment" />
+
+        <action
+            android:id="@+id/action_mainFragment_to_fireStationInfoFragment"
+            app:destination="@id/fireStationInfoFragment" />
+    </fragment>
+
+    <!-- Login Fragment -->
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.example.flare_capstone.views.auth.LoginFragment"
+        android:label="Login Fragment"
+        tools:layout="@layout/fragment_login">
+
+        <!-- Action to navigate back to the main screen (after successful login) -->
+        <action
+            android:id="@+id/action_loginFragment_to_mainFragment"
+            app:destination="@id/mainFragment" />
+
+        <!-- Action to navigate to User Activity after successful login -->
+        <action
+            android:id="@+id/action_loginFragment_to_userActivity"
+            app:destination="@id/userActivity" />
+    </fragment>
+
+    <!-- Register Fragment -->
+    <fragment
+        android:id="@+id/registerFragment"
+        android:name="com.example.flare_capstone.views.auth.RegisterFragment"
+        android:label="Register Fragment"
+        tools:layout="@layout/fragment_register">
+
+        <!-- Action to navigate back to Login Fragment after registration -->
+        <action
+            android:id="@+id/action_registerFragment_to_loginFragment"
+            app:destination="@id/loginFragment" />
+    </fragment>
+
+    <!-- SMS Fragment for submitting reports -->
+    <activity
+        android:id="@+id/smsFragment"
+        android:name="com.example.flare_capstone.views.fragment.user.ReportSmsActivity"
+        android:label="SMS Report"
+        tools:layout="@layout/fragment_sms" />
+
+    <!-- Fire Station Info Fragment -->
+    <fragment
+        android:id="@+id/fireStationInfoFragment"
+        android:name="com.example.flare_capstone.views.fragment.settings.FireStationInfoFragment"
+        android:label="Fire Station Info"
+        tools:layout="@layout/fragment_fire_station_information" />
+
+    <!-- User Activity (After successful login) -->
+    <activity
+        android:id="@+id/userActivity"
+        android:name="com.example.flare_capstone.views.activity.UserActivity"
+        android:label="User Activity"
+        tools:layout="@layout/fragment_home" />
+
+</navigation>

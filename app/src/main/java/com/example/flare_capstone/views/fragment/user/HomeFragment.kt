@@ -37,7 +37,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CircleCrop
 import com.example.flare_capstone.data.model.EmergencyMedicalServicesActivity
 import com.example.flare_capstone.views.fragment.user.FireLevelActivity
-import com.example.flare_capstone.views.activity.MainActivity
+import com.example.flare_capstone.views.auth.MainActivity
 import com.example.flare_capstone.views.fragment.profile.MyReportActivity
 import com.example.flare_capstone.views.fragment.user.OtherEmergencyActivity
 import com.example.flare_capstone.R

@@ -13,7 +13,7 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.example.flare_capstone.views.fragment.profile.EditFirefighterProfileActivity
-import com.example.flare_capstone.views.activity.MainActivity
+import com.example.flare_capstone.views.auth.MainActivity
 import com.example.flare_capstone.R
 import com.example.flare_capstone.databinding.FragmentProfileFireFighterBinding
 import com.google.firebase.auth.FirebaseAuth

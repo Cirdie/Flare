@@ -4,7 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.example.flare_capstone.databinding.ActivityOnboard3Binding
-import com.example.flare_capstone.views.activity.MainActivity
+import com.example.flare_capstone.views.auth.MainActivity
 
 class Onboard3Activity: AppCompatActivity() {
 

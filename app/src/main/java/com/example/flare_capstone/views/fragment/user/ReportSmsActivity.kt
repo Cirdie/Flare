@@ -24,7 +24,7 @@ import com.example.flare_capstone.R
 import com.example.flare_capstone.data.database.AppDatabase
 import com.example.flare_capstone.data.model.SmsReport
 import com.example.flare_capstone.databinding.ActivitySmsBinding
-import com.example.flare_capstone.views.activity.MainActivity
+import com.example.flare_capstone.views.auth.MainActivity
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest

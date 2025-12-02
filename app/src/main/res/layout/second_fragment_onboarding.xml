@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_onboarding_gradient"
+    tools:context=".views.onboarding.Onboard2Activity">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/titleText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="How to report an emergency"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="?attr/colorOnBackground"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="36dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Short guidance -->
+    <TextView
+        android:id="@+id/descriptionText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="• Tap **Fire Report** to report a fire. Select what involve and Captured Photo (Optional), then **Send** (or **Cancel**).\n\n• Tap **Other Emergency Report** to report a emergency. Select what involve and Captured Photo (Optional), then **Send** (or **Cancel**).\n\nTap **Emergency Medical Services Report** to report a emergency. Select what involve and Captured Photo (Optional), then **Send** (or **Cancel**)."
+        android:textSize="15sp"
+        android:textColor="?attr/colorOnBackground"
+        android:alpha="0.88"
+        android:gravity="center"
+        android:lineSpacingExtra="4dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginStart="28dp"
+        android:layout_marginEnd="28dp"
+        app:layout_constraintTop_toBottomOf="@id/titleText"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:ignore="HardcodedText" />
+
+    <!-- Preview card with the three actions -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/buttonContainer"
+        android:layout_width="357dp"
+        android:layout_height="0dp"
+        android:contentDescription="Preview of Fire, Other, and Vehicle Accident buttons"
+        app:cardCornerRadius="20dp"
+        app:cardUseCompatPadding="true"
+        app:strokeColor="?attr/colorOutline"
+        app:strokeWidth="1dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        app:layout_constraintTop_toBottomOf="@id/descriptionText"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_default="percent"
+        app:layout_constraintHeight_percent="0.45">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="18dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/fireButton"
+                android:layout_width="304dp"
+                android:layout_height="48dp"
+                android:text="Fire Report"
+                android:textAllCaps="false"
+                android:textColor="?attr/colorOnPrimary"
+                app:icon="@drawable/ic_fire_24"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:cornerRadius="24dp"
+                android:backgroundTint="#E00024"
+                android:layout_marginBottom="12dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/otherButton"
+                android:layout_width="304dp"
+                android:layout_height="48dp"
+                android:text="Other Emergency Report"
+                android:textAllCaps="false"
+                android:textColor="?attr/colorOnSecondary"
+                app:icon="@drawable/ic_warning_24"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:cornerRadius="24dp"
+                android:backgroundTint="#E87F2E"
+                android:layout_marginBottom="12dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/accidentButton"
+                android:layout_width="304dp"
+                android:layout_height="48dp"
+                android:text="Emergency Medical Services Report"
+                android:textAllCaps="false"
+                android:textColor="@color/black"
+                app:icon="@drawable/ic_car_crash_24"
+                app:iconTint="@color/black"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:cornerRadius="24dp"
+                android:backgroundTint="#f6f007" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

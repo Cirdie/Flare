@@ -1,17 +1,16 @@
-package com.example.flare_capstone.views.activity
+package com.example.flare_capstone.views.auth
 
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.example.flare_capstone.views.fragment.settings.FireStationInfoActivity
-import com.example.flare_capstone.views.onboarding.Onboard1Activity
-import com.example.flare_capstone.views.fragment.user.ReportSmsActivity
 import com.example.flare_capstone.data.database.AppDatabase
 import com.example.flare_capstone.databinding.ActivityMainBinding
-import com.example.flare_capstone.views.auth.LoginActivity
-import com.example.flare_capstone.views.auth.RegisterActivity
+import com.example.flare_capstone.views.activity.OnboardingActivity
+import com.example.flare_capstone.views.fragment.settings.FireStationInfoActivity
+import com.example.flare_capstone.views.fragment.user.ReportSmsActivity
+import com.example.flare_capstone.views.onboarding.Onboard1Activity
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,7 +44,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.logo.setOnClickListener {
-            startActivity(Intent(this, Onboard1Activity::class.java)); finish()
+            startActivity(Intent(this, OnboardingActivity::class.java)); finish()
         }
 
         binding.smsReport.setOnClickListener {
@@ -53,7 +52,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.onboard.setOnClickListener {
-            startActivity(Intent(this, Onboard1Activity::class.java)); finish()
+            startActivity(Intent(this, OnboardingActivity::class.java)); finish()
         }
     }
 

@@ -1,27 +1,28 @@
 package com.example.flare_capstone.views.auth
 
-import android.content.Intent
 import android.os.Bundle
 import android.text.InputFilter
 import android.text.method.DigitsKeyListener
 import android.text.method.PasswordTransformationMethod
 import android.util.Patterns
+import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import com.example.flare_capstone.views.auth.MainActivity
+import androidx.fragment.app.Fragment
+import com.example.flare_capstone.databinding.FragmentRegisterBinding
 import com.example.flare_capstone.dialog.VerifyEmailDialogFragment
-import com.example.flare_capstone.databinding.ActivityRegisterBinding
 import com.google.firebase.FirebaseApp
-import com.google.firebase.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.example.flare_capstone.R
 
-class RegisterActivity : AppCompatActivity() {
+class RegisterFragment : Fragment(R.layout.fragment_register) {
 
-    private lateinit var binding: ActivityRegisterBinding
+    private lateinit var binding: FragmentRegisterBinding
     private lateinit var auth: FirebaseAuth
     private val firestore = FirebaseFirestore.getInstance()
 
@@ -29,12 +30,13 @@ class RegisterActivity : AppCompatActivity() {
     private val PASSWORD_REGEX =
         Regex("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9])(?=\\S+$).{8,}$")
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        FirebaseApp.initializeApp(this)
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        FirebaseApp.initializeApp(requireContext())
 
-        binding = ActivityRegisterBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        binding = FragmentRegisterBinding.inflate(inflater, container, false)
 
         auth = FirebaseAuth.getInstance()
 
@@ -45,16 +47,16 @@ class RegisterActivity : AppCompatActivity() {
         setupPasswordToggle(binding.confirmPassword)
 
         binding.loginButton.setOnClickListener {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
+            // Navigate to Login Fragment or Activity
         }
 
         binding.logo.setOnClickListener {
-            startActivity(Intent(this, MainActivity::class.java))
-            finish()
+            // Navigate to Main Activity or Fragment
         }
 
         binding.register.setOnClickListener { onRegisterClicked() }
+
+        return binding.root
     }
 
     private fun onRegisterClicked() {
@@ -128,7 +130,7 @@ class RegisterActivity : AppCompatActivity() {
                             .set(data)
                             .addOnSuccessListener {
                                 val dialog = VerifyEmailDialogFragment()
-                                dialog.show(supportFragmentManager, "VerifyEmailDialog")
+                                dialog.show(parentFragmentManager, "VerifyEmailDialog")
                             }
                             .addOnFailureListener { e ->
                                 toast("Failed to save user: ${e.message}")
@@ -159,6 +161,7 @@ class RegisterActivity : AppCompatActivity() {
             false
         }
     }
+
     private fun togglePasswordVisibility(editText: EditText, show: Int, hide: Int) {
         val cursor = editText.selectionEnd
         if (editText.transformationMethod is PasswordTransformationMethod) {
@@ -176,23 +179,6 @@ class RegisterActivity : AppCompatActivity() {
     }
 
     private fun toast(msg: String) {
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
     }
-
-    // Back press confirmation
-    override fun onBackPressed() {
-        val builder = android.app.AlertDialog.Builder(this)
-        builder.setMessage("Are you sure you want to exit?")
-            .setCancelable(false)
-            .setPositiveButton("Yes") { _, _ ->
-                super.onBackPressed()  // Exits the activity if confirmed
-            }
-            .setNegativeButton("No") { dialog, _ ->
-                dialog.dismiss()  // Dismisses the dialog if "No" is clicked
-            }
-
-        val alert = builder.create()
-        alert.show()
-    }
-
 }

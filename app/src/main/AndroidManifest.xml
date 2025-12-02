@@ -7,26 +7,27 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.SEND_SMS"/>
-    <uses-permission android:name="android.permission.READ_SMS"/>
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-
-    <!-- Specify that the camera is not required -->
-    <uses-feature android:name="android.hardware.camera" android:required="false"/>
-    <!-- Specify that telephony is not required -->
-    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" /> <!-- Specify that the camera is not required -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" /> <!-- Specify that telephony is not required -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
 
     <application
-        android:enableOnBackInvokedCallback="true"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/ic_logo"
         android:label="@string/app_name"
@@ -34,71 +35,85 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FLARECAPSTONE"
         tools:targetApi="31">
+        <activity
+            android:name=".views.activity.SplashActivity"
+            android:exported="true"> <!-- You can make it exported if it's the launcher activity -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <activity
+            android:name=".views.activity.OnboardingActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBfiCPwDDMv2qMzTf9J3opEaRCKQJdrFGE"/>
-
-        <meta-data android:name="com.onesignal.NotificationOpened.DEFAULT" android:value="DISABLE" />
+            android:value="AIzaSyBfiCPwDDMv2qMzTf9J3opEaRCKQJdrFGE" />
+        <meta-data
+            android:name="com.onesignal.NotificationOpened.DEFAULT"
+            android:value="DISABLE" />
 
         <activity
             android:name=".views.onboarding.Onboard1Activity"
             android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
-
-        <activity android:name=".views.activity.MainActivity"/>
-        <activity android:name=".views.onboarding.Onboard2Activity"/>
-        <activity android:name=".views.onboarding.Onboard3Activity"/>
-        <activity android:name=".views.onboarding.Onboard4Activity"/>
+        <activity android:name=".views.auth.MainActivity" />
+        <activity android:name=".views.onboarding.Onboard2Activity" />
+        <activity android:name=".views.onboarding.Onboard3Activity" />
+        <activity android:name=".views.onboarding.Onboard4Activity" />
         <activity
             android:name=".views.auth.LoginActivity"
             android:exported="true">
             <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="yourapp.page.link"/>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="yourapp.page.link"
+                    android:scheme="https" />
                 <!-- If you also use a custom domain for continueUrl -->
-                <data android:scheme="https" android:host="your-domain.example.com"/>
+                <data
+                    android:host="your-domain.example.com"
+                    android:scheme="https" />
             </intent-filter>
         </activity>
-
-        <activity android:name=".views.auth.RegisterActivity"/>
-        <activity android:name=".views.activity.UserActivity"/>
-        <activity android:name=".views.fragment.user.FireLevelActivity"/>
-        <activity android:name=".views.fragment.user.OtherEmergencyActivity"/>
-        <activity android:name=".data.model.EmergencyMedicalServicesActivity"/>
-        <activity android:name=".views.fragment.user.ReportSmsActivity"/>
+        <activity android:name=".views.auth.RegisterActivity" />
+        <activity android:name=".views.activity.UserActivity" />
+        <activity android:name=".views.fragment.user.FireLevelActivity" />
+        <activity android:name=".views.fragment.user.OtherEmergencyActivity" />
+        <activity android:name=".data.model.EmergencyMedicalServicesActivity" />
+        <activity android:name=".views.fragment.user.ReportSmsActivity" />
         <activity
             android:name=".views.fragment.user.FireReportResponseActivity"
-            android:parentActivityName=".views.activity.UserActivity"
-            android:launchMode="singleTop">
+            android:launchMode="singleTop"
+            android:parentActivityName=".views.activity.UserActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".views.activity.UserActivity" />
         </activity>
 
         <activity
+            android:name=".views.activity.AuthActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".views.activity.FirefighterActivity"
             android:launchMode="singleTop" />
-
-
-        <activity android:name=".views.fragment.profile.EditProfileActivity"/>
-        <activity android:name=".views.fragment.bfp.FireFighterResponseActivity"/>
-        <activity android:name=".views.fragment.profile.EditFirefighterProfileActivity"/>
-        <activity android:name=".views.auth.ChangePasswordActivity"/>
-        <activity android:name=".views.fragment.settings.AboutAppActivity"/>
-        <activity android:name=".views.fragment.settings.UserGuideActivity"/>
-        <activity android:name=".views.fragment.profile.MyReportActivity"/>
-        <activity android:name=".views.fragment.settings.FireStationInfoActivity"/>
-        <activity android:name=".views.fragment.bfp.FireFighterReportActivity"/>
-
-
+        <activity android:name=".views.fragment.profile.EditProfileActivity" />
+        <activity android:name=".views.fragment.bfp.FireFighterResponseActivity" />
+        <activity android:name=".views.fragment.profile.EditFirefighterProfileActivity" />
+        <activity android:name=".views.auth.ChangePasswordActivity" />
+        <activity android:name=".views.fragment.settings.AboutAppActivity" />
+        <activity android:name=".views.fragment.settings.UserGuideActivity" />
+        <activity android:name=".views.fragment.profile.MyReportActivity" />
+        <activity android:name=".views.fragment.settings.FireStationInfoActivity" />
+        <activity android:name=".views.fragment.bfp.FireFighterReportActivity" />
     </application>
 
 </manifest>
