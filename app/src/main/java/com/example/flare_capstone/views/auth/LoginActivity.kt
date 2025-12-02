@@ -24,11 +24,19 @@ import com.google.firebase.firestore.ListenerRegistration
 
 class LoginActivity : AppCompatActivity() {
 
+    /* ======================================================
+     * VARIABLES
+     * ====================================================== */
     private lateinit var binding: ActivityLoginBinding
     private lateinit var auth: FirebaseAuth
     private val firestore = FirebaseFirestore.getInstance()
     private var verificationListener: ListenerRegistration? = null
+    private var loadingDialog: android.app.AlertDialog? = null
 
+
+    /* ======================================================
+     * LIFECYCLE
+     * ====================================================== */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         FirebaseApp.initializeApp(this)
@@ -59,6 +67,10 @@ class LoginActivity : AppCompatActivity() {
         verificationListener?.remove()
     }
 
+
+    /* ======================================================
+     * FIRESTORE VERIFICATION LISTENER
+     * ====================================================== */
     private fun attachVerificationListener() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
@@ -70,17 +82,14 @@ class LoginActivity : AppCompatActivity() {
 
                 val status = snap.getString("status") ?: return@addSnapshotListener
 
-                // If Firestore status becomes "verified", close dialog & go to dashboard
                 if (status == "verified") {
 
-                    // Auto-set verifiedAt if missing
                     if (snap.getTimestamp("verifiedAt") == null) {
                         firestore.collection("users")
                             .document(uid)
                             .update("verifiedAt", Timestamp.now())
                     }
 
-                    // Close dialog if open
                     val dialog = supportFragmentManager.findFragmentByTag("VerifyEmailDialog")
                     if (dialog is VerifyEmailDialogFragment) {
                         dialog.dismissAllowingStateLoss()
@@ -91,9 +100,10 @@ class LoginActivity : AppCompatActivity() {
             }
     }
 
-    // ======================================================
-    // 🔐 LOGIN FLOW
-    // ======================================================
+
+    /* ======================================================
+     * LOGIN FLOW
+     * ====================================================== */
     private fun onLoginClicked() {
         val email = binding.email.text.toString().trim().lowercase()
         val password = binding.password.text.toString()
@@ -104,12 +114,16 @@ class LoginActivity : AppCompatActivity() {
         }
 
         setLoginEnabled(false)
+        showLoadingDialog()
 
         auth.signInWithEmailAndPassword(email, password)
             .addOnSuccessListener {
+                hideLoadingDialog()
                 attachVerificationListener()
-                checkEmailStatus() }
+                checkEmailStatus()
+            }
             .addOnFailureListener { e ->
+                hideLoadingDialog()
                 setLoginEnabled(true)
                 toast(
                     when (e) {
@@ -121,9 +135,10 @@ class LoginActivity : AppCompatActivity() {
             }
     }
 
-    // ======================================================
-    // ✉️ CHECK VERIFIED OR NOT
-    // ======================================================
+
+    /* ======================================================
+     * CHECK EMAIL VERIFICATION
+     * ====================================================== */
     private fun checkEmailStatus() {
         val user = auth.currentUser ?: return
 
@@ -133,7 +148,6 @@ class LoginActivity : AppCompatActivity() {
 
                 val userDoc = firestore.collection("users").document(user.uid)
 
-                // 🔥 Update both status and verifiedAt timestamp
                 userDoc.update(
                     mapOf(
                         "status" to "verified",
@@ -142,6 +156,7 @@ class LoginActivity : AppCompatActivity() {
                 )
 
                 loginVerifiedUser(user.uid)
+
             } else {
                 showVerifyDialogOnly()
                 setLoginEnabled(true)
@@ -150,10 +165,9 @@ class LoginActivity : AppCompatActivity() {
     }
 
 
-
-    // ======================================================
-    // 🟢 VERIFIED USERS LOGIN
-    // ======================================================
+    /* ======================================================
+     * VERIFIED USER LOGIN
+     * ====================================================== */
     private fun loginVerifiedUser(uid: String) {
         firestore.collection("users")
             .document(uid)
@@ -167,6 +181,7 @@ class LoginActivity : AppCompatActivity() {
                 }
 
                 val status = doc.getString("status") ?: "unverified"
+
                 if (status != "verified") {
                     toast("Your account is still pending verification.")
                     setLoginEnabled(true)
@@ -181,30 +196,37 @@ class LoginActivity : AppCompatActivity() {
             }
     }
 
-    // ======================================================
-    // 📩 SHOW VERIFY DIALOG (Firestore Version)
-    // ======================================================
+
+    /* ======================================================
+     * VERIFY DIALOG
+     * ====================================================== */
     private fun showVerifyDialogOnly() {
         val dialog = VerifyEmailDialogFragment()
         dialog.show(supportFragmentManager, "VerifyEmailDialog")
     }
 
-    // ======================================================
-    // 🧭 NAVIGATION
-    // ======================================================
+
+    /* ======================================================
+     * NAVIGATION
+     * ====================================================== */
     private fun routeToDashboard() {
         startActivity(Intent(this, UserActivity::class.java))
         finish()
     }
 
+
+    /* ======================================================
+     * UI HELPERS
+     * ====================================================== */
     private fun setLoginEnabled(enabled: Boolean) {
         binding.loginButton.isEnabled = enabled
         binding.loginButton.alpha = if (enabled) 1f else 0.6f
     }
 
-    // ======================================================
-    // 🔑 PASSWORD RESET
-    // ======================================================
+
+    /* ======================================================
+     * FORGOT PASSWORD
+     * ====================================================== */
     private fun onForgotPassword() {
         val email = binding.email.text.toString().trim().lowercase()
 
@@ -213,7 +235,6 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
-        // Disable button for 100 seconds
         startForgotPasswordCooldown()
 
         auth.sendPasswordResetEmail(email)
@@ -222,14 +243,14 @@ class LoginActivity : AppCompatActivity() {
             }
             .addOnFailureListener {
                 toast("Reset failed: ${it.message}")
-                // If failed, re-enable immediately
                 resetForgotPasswordButton()
             }
     }
+
     private fun startForgotPasswordCooldown() {
         binding.forgotPassword.isEnabled = false
 
-        object : CountDownTimer(100000, 1000) { // 100 sec = 100000 ms
+        object : CountDownTimer(100000, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 val seconds = millisUntilFinished / 1000
                 binding.forgotPassword.text = "Try again in ${seconds}s"
@@ -249,7 +270,41 @@ class LoginActivity : AppCompatActivity() {
     }
 
 
+    /* ======================================================
+     * LOADING DIALOG
+     * ====================================================== */
+    private fun showLoadingDialog() {
+        if (loadingDialog != null && loadingDialog!!.isShowing) return
 
+        val view = layoutInflater.inflate(R.layout.progress_dialog, null)
+
+        loadingDialog = android.app.AlertDialog.Builder(this, R.style.TransparentDialog)
+            .setView(view)
+            .setCancelable(false)
+            .create()
+
+        // Make the dialog truly centered with no background
+        loadingDialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        loadingDialog?.show()
+
+        // Optional: dismiss after 5 seconds
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            loadingDialog?.dismiss()
+            loadingDialog = null
+        }, 5000)
+    }
+
+
+
+    private fun hideLoadingDialog() {
+        loadingDialog?.dismiss()
+        loadingDialog = null
+    }
+
+
+    /* ======================================================
+     * RESET PASSWORD HANDLER
+     * ====================================================== */
     private fun handleResetIntent(intent: Intent) {
         val data: Uri? = intent.data ?: return
         val mode = data?.getQueryParameter("mode")
@@ -263,9 +318,10 @@ class LoginActivity : AppCompatActivity() {
             }
     }
 
-    // ======================================================
-    // 👁 PASSWORD TOGGLE
-    // ======================================================
+
+    /* ======================================================
+     * PASSWORD VISIBILITY TOGGLE
+     * ====================================================== */
     private fun setupPasswordToggle(editText: EditText) {
         val visibleIcon = R.drawable.ic_visibility
         val hiddenIcon = R.drawable.ic_visibility_off
@@ -276,6 +332,7 @@ class LoginActivity : AppCompatActivity() {
         editText.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_UP) {
                 val drawableEnd = editText.compoundDrawables[2]
+
                 if (drawableEnd != null &&
                     event.rawX >= (editText.right - drawableEnd.bounds.width())
                 ) {
@@ -286,6 +343,7 @@ class LoginActivity : AppCompatActivity() {
                         editText.transformationMethod = PasswordTransformationMethod.getInstance()
                         editText.setCompoundDrawablesWithIntrinsicBounds(0, 0, hiddenIcon, 0)
                     }
+
                     editText.setSelection(editText.text.length)
                     return@setOnTouchListener true
                 }
@@ -294,6 +352,10 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
+
+    /* ======================================================
+     * TOAST
+     * ====================================================== */
     private fun toast(msg: String) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }

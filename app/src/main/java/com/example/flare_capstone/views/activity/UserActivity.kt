@@ -3,7 +3,7 @@ package com.example.flare_capstone.views.activity
 import androidx.navigation.ui.setupWithNavController
 import com.example.flare_capstone.data.model.User
 import com.example.flare_capstone.util.ThemeManager
-import com.example.flare_capstone.views.fragment.bfp.FireReportResponseActivity
+import com.example.flare_capstone.views.fragment.user.FireReportResponseActivity
 
 class UserActivity : androidx.appcompat.app.AppCompatActivity() {
 
@@ -73,7 +73,8 @@ class UserActivity : androidx.appcompat.app.AppCompatActivity() {
         setContentView(binding.root)
 
         connectivityManager =
-            android.content.Context.getSystemService(android.net.ConnectivityManager::class.java)
+            getSystemService(android.net.ConnectivityManager::class.java)
+
 
         if (!isConnected()) {
             showLoadingDialog("No internet connection")
@@ -220,8 +221,7 @@ class UserActivity : androidx.appcompat.app.AppCompatActivity() {
      * ========================================================= */
     private fun createNotificationChannel() {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return
-        val nm =
-            android.content.Context.getSystemService(android.app.NotificationManager::class.java)
+        val nm = getSystemService(android.app.NotificationManager::class.java)
 
         // Clean up the truly old one once (harmless if missing)
         runCatching { nm.deleteNotificationChannel("default_channel") }

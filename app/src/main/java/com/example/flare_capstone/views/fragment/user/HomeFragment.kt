@@ -123,7 +123,8 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         val coarse = grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         if (fine || coarse) {
             enableMyLocationSafely()
-            startLocationUpdates()
+            startLocationUpdatesSafely()
+
             primeLocationOnce()
         } else {
             postToast("Location permission denied")
@@ -243,6 +244,14 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
         mapReady = true
+
+        if (hasLocationPermission()) {
+            enableMyLocationSafely()
+            startLocationUpdatesSafely()
+        } else {
+            requestLocationPerms()
+        }
+
 
         // Initialize Firestore if not yet
         if (!::firestore.isInitialized) {
@@ -516,9 +525,16 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
      * ========================================================= */
     @SuppressLint("MissingPermission")
     private fun enableMyLocationSafely() {
-        if (!hasLocationPermission()) return
-        try { map.isMyLocationEnabled = true } catch (_: SecurityException) {}
+        if (hasLocationPermission() && ::map.isInitialized) {
+            try {
+                map.isMyLocationEnabled = true  // blue dot
+                map.uiSettings.isMyLocationButtonEnabled = true
+            } catch (e: SecurityException) {
+                postToast("Location permission denied")
+            }
+        }
     }
+
 
     private fun hasLocationPermission(): Boolean {
         val ctx = context ?: return false
@@ -526,6 +542,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         val coarse = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         return fine || coarse
     }
+
 
     private fun requestLocationPerms() {
         locationPermsLauncher.launch(arrayOf(
@@ -545,22 +562,41 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
 
         fusedLocationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
     }
+    private fun startLocationUpdatesSafely() {
+        if (!isAdded || locationUpdatesStarted) return
+
+        if (!hasLocationPermission()) {
+            requestLocationPerms() // launch permission request
+            return
+        }
+
+        try {
+            locationUpdatesStarted = true
+
+            val request = LocationRequest.Builder(
+                Priority.PRIORITY_HIGH_ACCURACY, 10_000L
+            ).setMinUpdateIntervalMillis(5_000L).build()
+
+            fusedLocationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
+        } catch (e: SecurityException) {
+            postToast("Cannot start location updates: permission denied")
+        }
+    }
+
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             val loc = result.lastLocation ?: return
             userLatitude = loc.latitude
             userLongitude = loc.longitude
+
             if (!cameraFittedOnce) {
-                map.animateCamera(
-                    CameraUpdateFactory.newLatLngZoom(
-                        LatLng(
-                            userLatitude,
-                            userLongitude
-                        ), DEFAULT_ZOOM_CITY))
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(userLatitude, userLongitude), DEFAULT_ZOOM_CITY))
                 cameraFittedOnce = true
             }
         }
+
+
     }
 
     @SuppressLint("MissingPermission")

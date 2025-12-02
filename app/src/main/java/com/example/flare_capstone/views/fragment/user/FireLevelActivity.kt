@@ -502,7 +502,7 @@ class FireLevelActivity : AppCompatActivity() {
 
         // 👇 Add this part — find the Close TextView and handle click
         // 🔻 Handle "Close" click: dismiss dialog + finish activity
-        val closeText = v.findViewById<TextView>(R.id.close_text)
+        val closeText = v.findViewById<TextView>(R.id.close_button)
         closeText?.setOnClickListener {
             locatingDialog?.dismiss()
             locatingDialog = null

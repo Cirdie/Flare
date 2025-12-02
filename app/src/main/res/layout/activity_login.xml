@@ -17,7 +17,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp"/>
+        android:layout_marginTop="70dp"/>
 
     <!-- Tap hint -->
     <TextView
@@ -58,6 +58,7 @@
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="20dp"
                 app:cardUseCompatPadding="true"
+                android:layout_marginTop="60dp"
                 app:strokeColor="?attr/colorOutline"
                 app:strokeWidth="1dp">
 
