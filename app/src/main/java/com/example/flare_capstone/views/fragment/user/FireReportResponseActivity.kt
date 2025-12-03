@@ -45,8 +45,12 @@ class FireReportResponseActivity : AppCompatActivity() {
 
     private lateinit var uid: String
     private lateinit var reporterName: String
+    private lateinit var userEmail: String
+    private lateinit var stationName: String
+    private lateinit var fireStationName: String
     private lateinit var incidentId: String
     private var fromNotification: Boolean = false
+    private var reportNode: String = FIRE_REPORT
 
     private var base64Image: String = ""
     private var recorder: MediaRecorder? = null
@@ -66,14 +70,14 @@ class FireReportResponseActivity : AppCompatActivity() {
 
         const val FIRE_REPORT = "AllReport/FireReport"
         const val OTHER_REPORT = "AllReport/OtherEmergencyReport"
-        const val EMS_REPORT = "AllReport/MedicalServicesReport"
+        const val EMS_REPORT = "AllReport/EmergencyMedicalServicesReport"
         const val SMS_REPORT = "AllReport/SmsReport"
     }
 
-    private var reportNode: String = FIRE_REPORT
-
     data class ChatMessage(
-        var type: String? = null,
+        var sender: String? = null, // "user" or "station"
+        var messageType: String? = null, // "text", "image", "emoji", "audio"
+        var userEmail: String? = null,
         var text: String? = null,
         var imageBase64: String? = null,
         var audioBase64: String? = null,
@@ -102,12 +106,14 @@ class FireReportResponseActivity : AppCompatActivity() {
         database = FirebaseDatabase.getInstance().reference
 
         uid = intent.getStringExtra("UID") ?: ""
-        reporterName = intent.getStringExtra("REPORTER_NAME") ?: "User"
+        userEmail = intent.getStringExtra("USER_EMAIL") ?: ""
+        fireStationName = intent.getStringExtra("NAME") ?: "Station"
         incidentId = intent.getStringExtra("INCIDENT_ID") ?: ""
         fromNotification = intent.getBooleanExtra("fromNotification", false)
+        reporterName = intent.getStringExtra("REPORTER_NAME") ?: "Unknown"
         reportNode = intent.getStringExtra("REPORT_NODE") ?: FIRE_REPORT
 
-        binding.fireStationName.text = reporterName
+        binding.fireStationName.text = fireStationName
 
         if (incidentId.isEmpty()) {
             Toast.makeText(this, "No Incident ID provided.", Toast.LENGTH_SHORT).show()
@@ -131,16 +137,15 @@ class FireReportResponseActivity : AppCompatActivity() {
 
         binding.messageInput.setOnFocusChangeListener { _, hasFocus ->
             val expanded = hasFocus || binding.messageInput.text?.isNotBlank() == true
-            setTypingUi(expanded)
+            setTypingUi()
             setExpandedUi(expanded)
         }
 
         binding.messageInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                val expanded = !s.isNullOrBlank() || binding.messageInput.hasFocus()
-                setTypingUi(expanded)
-                setExpandedUi(expanded)
+                setTypingUi()
+                setExpandedUi(!s.isNullOrBlank() || binding.messageInput.hasFocus())
             }
             override fun afterTextChanged(s: Editable?) {}
         })
@@ -148,7 +153,7 @@ class FireReportResponseActivity : AppCompatActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.chatInputArea) { _, insets ->
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
             val expanded = imeVisible || binding.messageInput.text?.isNotBlank() == true
-            setTypingUi(expanded)
+            setTypingUi()
             setExpandedUi(expanded)
             insets
         }
@@ -161,17 +166,16 @@ class FireReportResponseActivity : AppCompatActivity() {
 
         binding.sendButton.setOnClickListener {
             val userMessage = binding.messageInput.text.toString().trim()
+            val hasText = userMessage.isNotEmpty()
+            val hasImage = base64Image.isNotEmpty()
+
             when {
-                userMessage.isNotEmpty() && base64Image.isNotEmpty() -> {
-                    pushChatMessage(type = "reply", text = userMessage, imageBase64 = base64Image)
+                hasText -> pushChatMessage("user", text = userMessage, messageType = "text")
+                hasImage -> pushChatMessage("user", imageBase64 = base64Image, messageType = "image")
+                else -> {
+                    val emojiBase64 = getEmojiBase64()
+                    pushChatMessage("user", imageBase64 = emojiBase64, messageType = "emoji")
                 }
-                userMessage.isNotEmpty() -> {
-                    pushChatMessage(type = "reply", text = userMessage)
-                }
-                base64Image.isNotEmpty() -> {
-                    pushChatMessage(type = "reply", text = "", imageBase64 = base64Image)
-                }
-                else -> Toast.makeText(this, "Message or image required", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -184,10 +188,27 @@ class FireReportResponseActivity : AppCompatActivity() {
         binding.messageInput.maxLines = if (expanded) 5 else 3
     }
 
-    private fun setTypingUi(isTyping: Boolean) {
+    private fun getEmojiBase64(): String {
+        val drawable = ContextCompat.getDrawable(this, R.drawable.ic_emoji) ?: return ""
+        val bitmap = (drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap ?: return ""
+
+        val resized = Bitmap.createScaledBitmap(bitmap, 80, 80, true)
+        val outputStream = java.io.ByteArrayOutputStream()
+        resized.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+        val bytes = outputStream.toByteArray()
+        return Base64.encodeToString(bytes, Base64.DEFAULT)
+    }
+
+    private fun setTypingUi() {
         val hasText = binding.messageInput.text?.isNotBlank() == true
-        binding.sendButton.isEnabled = hasText
-        binding.sendButton.alpha = if (hasText) 1f else 0.4f
+        val hasImage = base64Image.isNotEmpty()
+
+        binding.sendButton.setImageResource(
+            when {
+                hasText || hasImage -> R.drawable.icon_send
+                else -> R.drawable.ic_emoji
+            }
+        )
     }
 
     private fun View.hideKeyboard() {
@@ -207,17 +228,10 @@ class FireReportResponseActivity : AppCompatActivity() {
         binding.recordSend.setOnClickListener { finishRecordingAndSend() }
     }
 
-    // -----------------------------
-    // Camera & Gallery
-    // -----------------------------
     private fun openCameraWithPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-            == PackageManager.PERMISSION_GRANTED) openCamera()
-        else ActivityCompat.requestPermissions(
-            this,
-            arrayOf(Manifest.permission.CAMERA),
-            CAMERA_PERMISSION_REQUEST_CODE
-        )
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
+            openCamera()
+        else ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_REQUEST_CODE)
     }
 
     private fun openCamera() {
@@ -232,13 +246,9 @@ class FireReportResponseActivity : AppCompatActivity() {
     // Recording
     // -----------------------------
     private fun startRecordingWithPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-            == PackageManager.PERMISSION_GRANTED) startRecording()
-        else ActivityCompat.requestPermissions(
-            this,
-            arrayOf(Manifest.permission.RECORD_AUDIO),
-            RECORD_AUDIO_PERMISSION_CODE
-        )
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+            startRecording()
+        else ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), RECORD_AUDIO_PERMISSION_CODE)
     }
 
     private fun startRecording() {
@@ -304,7 +314,7 @@ class FireReportResponseActivity : AppCompatActivity() {
         binding.recordBar.visibility = View.GONE
 
         val audioB64 = Base64.encodeToString(file.readBytes(), Base64.DEFAULT)
-        pushChatMessage(type = "reply", text = "", audioBase64 = audioB64)
+        pushChatMessage("user", audioBase64 = audioB64, messageType = "audio")
         file.delete()
     }
 
@@ -327,7 +337,6 @@ class FireReportResponseActivity : AppCompatActivity() {
                 }
                 binding.scrollView.post { binding.scrollView.fullScroll(View.FOCUS_DOWN) }
             }
-
             override fun onCancelled(error: DatabaseError) {
                 Toast.makeText(this@FireReportResponseActivity, "Error: ${error.message}", Toast.LENGTH_SHORT).show()
             }
@@ -336,91 +345,126 @@ class FireReportResponseActivity : AppCompatActivity() {
     }
 
     private fun pushChatMessage(
-        type: String,
-        text: String = "",
-        imageBase64: String = "",
-        audioBase64: String = ""
+        sender: String,
+        text: String? = null,
+        imageBase64: String? = null,
+        audioBase64: String? = null,
+        messageType: String
     ) {
         val now = System.currentTimeMillis()
-        val msg = ChatMessage(type, text.takeIf { it.isNotBlank() }, imageBase64.takeIf { it.isNotBlank() }, audioBase64.takeIf { it.isNotBlank() }, uid, reporterName, now, false)
+        val msg = ChatMessage(
+            sender = sender,
+            messageType = messageType,
+            text = text,
+            imageBase64 = imageBase64,
+            audioBase64 = audioBase64,
+            uid = uid,
+            reporterName = reporterName,
+            userEmail = userEmail,
+            timestamp = now,
+            isRead = false
+        )
         messagesPath().push().setValue(msg)
         base64Image = ""
         binding.messageInput.text.clear()
+        setTypingUi()
     }
 
     private fun displayMessage(msg: ChatMessage) {
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(20, 15, 20, 15)
-            gravity = if (msg.type.equals("reply", true)) Gravity.END else Gravity.START
+            setPadding(12, 6, 12, 6)
+            gravity = if (msg.sender == "user") Gravity.END else Gravity.START
         }
 
-        msg.text?.takeIf { it.isNotEmpty() }?.let {
-            val tv = TextView(this).apply {
-                text = it
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-                setTextColor(Color.WHITE)
-                setPadding(20, 15, 20, 15)
-                background = resources.getDrawable(
-                    if (msg.type.equals("reply", true)) R.drawable.received_message_bg else R.drawable.sent_message_bg,
-                    null
-                )
-            }
-            layout.addView(tv)
-        }
-
-        msg.imageBase64?.let { base64 ->
-            convertBase64ToBitmap(base64)?.let { bitmap ->
-                val iv = ImageView(this).apply {
-                    setImageBitmap(bitmap)
-                    layoutParams = LinearLayout.LayoutParams(
-                        (resources.displayMetrics.density * 250).toInt(),
-                        (resources.displayMetrics.density * 200).toInt()
+        when (msg.messageType) {
+            "text" -> {
+                val tv = TextView(this).apply {
+                    text = msg.text
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                    setTextColor(Color.WHITE)
+                    setPadding(24, 16, 24, 16)
+                    background = resources.getDrawable(
+                        if (msg.sender == "user") R.drawable.sent_message_bg else R.drawable.received_message_bg, null
                     )
-                    adjustViewBounds = true
-                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        gravity = if (msg.sender == "user") Gravity.END else Gravity.START
+                    }
+                    setLineSpacing(0f, 1.2f)
+                    isSingleLine = false
+                    maxWidth = (resources.displayMetrics.widthPixels * 0.7).toInt()
                 }
-                layout.addView(iv)
+                layout.addView(tv)
             }
-        }
 
-        msg.audioBase64?.let { audioB64 ->
-            val playBtn = TextView(this).apply {
-                text = "▶️ Play Voice Message"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-                setTextColor(Color.WHITE)
-                setPadding(20, 15, 20, 15)
-                background = resources.getDrawable(
-                    if (msg.type.equals("reply", true)) R.drawable.received_message_bg else R.drawable.sent_message_bg,
-                    null
-                )
-                setOnClickListener {
-                    try {
-                        val audioBytes = Base64.decode(audioB64, Base64.DEFAULT)
-                        val tempFile = File.createTempFile("audio_", ".m4a", cacheDir)
-                        tempFile.writeBytes(audioBytes)
-                        MediaPlayer().apply {
-                            setDataSource(tempFile.absolutePath)
-                            prepare()
-                            start()
+            "image", "emoji" -> {
+                convertBase64ToBitmap(msg.imageBase64)?.let { bitmap ->
+                    val iv = ImageView(this).apply {
+                        setImageBitmap(bitmap)
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply {
+                            gravity = if (msg.sender.equals("user", true)) Gravity.END else Gravity.START
+                            width = (resources.displayMetrics.widthPixels * 0.4).toInt() // max width 50%
                         }
-                    } catch (_: Exception) {}
+                        adjustViewBounds = true
+                        scaleType = ImageView.ScaleType.FIT_CENTER
+                    }
+                    layout.addView(iv)
                 }
             }
-            layout.addView(playBtn)
+
+            "audio" -> {
+                val playBtn = TextView(this).apply {
+                    text = "▶️ Play Voice Message"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                    setTextColor(Color.WHITE)
+                    setPadding(24, 16, 24, 16)
+                    background = resources.getDrawable(
+                        if (msg.sender == "user") R.drawable.sent_message_bg else R.drawable.received_message_bg, null
+                    )
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        gravity = if (msg.sender == "user") Gravity.END else Gravity.START
+                        maxWidth = (resources.displayMetrics.widthPixels * 0.7).toInt()
+                    }
+                    setOnClickListener {
+                        try {
+                            val audioBytes = Base64.decode(msg.audioBase64, Base64.DEFAULT)
+                            val tempFile = File.createTempFile("audio_", ".m4a", cacheDir)
+                            tempFile.writeBytes(audioBytes)
+                            MediaPlayer().apply {
+                                setDataSource(tempFile.absolutePath)
+                                prepare()
+                                start()
+                            }
+                        } catch (_: Exception) {}
+                    }
+                }
+                layout.addView(playBtn)
+            }
         }
 
+        // Timestamp
         val timestampTv = TextView(this).apply {
-            text = SimpleDateFormat("MMM d, yyyy, h:mm a", Locale.getDefault()).format(Date(msg.timestamp ?: System.currentTimeMillis()))
+            text = SimpleDateFormat("MMM d, yyyy, h:mm a", Locale.getDefault())
+                .format(Date(msg.timestamp ?: System.currentTimeMillis()))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             setTextColor(Color.LTGRAY)
-            gravity = if (msg.type.equals("reply", true)) Gravity.END else Gravity.START
+            gravity = if (msg.sender == "user") Gravity.END else Gravity.START
         }
         layout.addView(timestampTv)
 
         binding.scrollContent.addView(layout)
         binding.scrollView.post { binding.scrollView.fullScroll(View.FOCUS_DOWN) }
     }
+
 
     private fun convertBase64ToBitmap(base64: String?): Bitmap? {
         if (base64.isNullOrEmpty()) return null
@@ -450,5 +494,39 @@ class FireReportResponseActivity : AppCompatActivity() {
             startActivity(intent)
             finish()
         } else super.onBackPressed()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (resultCode != RESULT_OK || data == null) return
+
+        when (requestCode) {
+            CAMERA_REQUEST_CODE -> {
+                val bitmap = data.extras?.get("data") as? Bitmap ?: return
+                val base64 = bitmapToBase64(bitmap)
+                showImagePreview(base64)
+            }
+            GALLERY_REQUEST_CODE -> {
+                val uri = data.data ?: return
+                val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
+                val base64 = bitmapToBase64(bitmap)
+                showImagePreview(base64)
+            }
+        }
+    }
+
+    private fun bitmapToBase64(bitmap: Bitmap): String {
+        val outputStream = java.io.ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+        val bytes = outputStream.toByteArray()
+        return Base64.encodeToString(bytes, Base64.DEFAULT)
+    }
+
+    private fun showImagePreview(base64: String) {
+        base64Image = base64
+        val previewMsg = ChatMessage(sender = "user", messageType = "image", imageBase64 = base64)
+        displayMessage(previewMsg)
+        setTypingUi()
     }
 }

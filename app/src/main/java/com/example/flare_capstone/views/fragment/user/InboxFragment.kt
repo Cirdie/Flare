@@ -1,6 +1,5 @@
 package com.example.flare_capstone.views.fragment.user
 
-import android.R
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -17,9 +16,9 @@ import com.example.flare_capstone.databinding.FragmentInboxBinding
 import com.google.android.material.tabs.TabLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import com.google.firebase.firestore.FirebaseFirestore
 
 class InboxFragment : Fragment() {
+
     private var _binding: FragmentInboxBinding? = null
     private val binding get() = _binding!!
 
@@ -35,14 +34,17 @@ class InboxFragment : Fragment() {
     private var currentFilter = FilterMode.ALL
 
     private var unreadMessageCount = 0
-
     private lateinit var database: DatabaseReference
-    private val firestore = FirebaseFirestore.getInstance()
 
-    private val FIRE_NODE = "AllReport/FireReport"
-    private val OTHER_NODE = "AllReport/OtherEmergencyReport"
-    private val EMS_NODE = "AllReport/EmergencyMedicalServicesReport"
-    private val SMS_NODE = "AllReport/SmsReport"
+    private val reportNodes = listOf(
+        "AllReport/FireReport",
+        "AllReport/OtherEmergencyReport",
+        "AllReport/EmergencyMedicalServicesReport",
+        "AllReport/SmsReport"
+    )
+
+    private var currentUserEmail: String? = null
+    private var currentUserDocId: String? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentInboxBinding.inflate(inflater, container, false)
@@ -61,6 +63,12 @@ class InboxFragment : Fragment() {
         binding.recyclerView.layoutManager = LinearLayoutManager(context)
         binding.recyclerView.adapter = adapter
 
+        setupTabsAndDropdown()
+        loadCurrentUser()
+    }
+
+    private fun setupTabsAndDropdown() {
+        // Tabs for read/unread
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 currentFilter = when (tab.position) {
@@ -74,12 +82,13 @@ class InboxFragment : Fragment() {
             override fun onTabReselected(tab: TabLayout.Tab) {}
         })
 
+        // Category dropdown
         val categories = listOf(
             "All Report", "Fire Report", "Other Emergency Report",
             "Emergency Medical Services Report", "Sms Report"
         )
         binding.categoryDropdown.setAdapter(
-            ArrayAdapter(requireContext(), R.layout.simple_list_item_1, categories)
+            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, categories)
         )
         binding.categoryDropdown.setText("All Report", false)
         binding.categoryDropdown.setOnItemClickListener { _, _, pos, _ ->
@@ -92,41 +101,26 @@ class InboxFragment : Fragment() {
             }
             applyFilter()
         }
-
-        loadUserAndAttach()
     }
 
-    private fun loadUserAndAttach() {
-        val userEmail = FirebaseAuth.getInstance().currentUser?.email
-        if (userEmail == null) {
+    private fun loadCurrentUser() {
+        currentUserEmail = FirebaseAuth.getInstance().currentUser?.email
+        if (currentUserEmail == null) {
             Toast.makeText(context, "User not logged in", Toast.LENGTH_SHORT).show()
             Log.d("InboxFragment", "User not logged in")
             return
         }
 
-        Log.d("InboxFragment", "Current user email: $userEmail")
+        Log.d("InboxFragment", "Current user email: $currentUserEmail")
 
-        firestore.collection("users")
-            .whereEqualTo("email", userEmail)
-            .get()
-            .addOnSuccessListener { docs ->
-                if (docs.isEmpty) {
-                    Toast.makeText(context, "User data not found", Toast.LENGTH_SHORT).show()
-                    Log.d("InboxFragment", "No Firestore user document found for $userEmail")
-                    return@addOnSuccessListener
-                }
-                val userDocId = docs.documents.first().id
-                Log.d("InboxFragment", "Current userDocId: $userDocId")
-                attachAllReportListeners(userDocId)
-            }
-            .addOnFailureListener { e ->
-                Toast.makeText(context, "Failed to load user data", Toast.LENGTH_SHORT).show()
-                Log.e("InboxFragment", "Error fetching userDocId: ${e.message}")
-            }
+        // We assume userDocId = email for matching (if not, query Firestore users collection)
+        currentUserDocId = currentUserEmail
+        attachReportListeners()
     }
 
-    private fun attachAllReportListeners(userDocId: String) {
-        if (_binding == null) return  // <-- Add this check
+
+    private fun attachReportListeners() {
+        if (_binding == null) return
         detachAllListeners()
         allMessages.clear()
         visibleMessages.clear()
@@ -134,22 +128,83 @@ class InboxFragment : Fragment() {
         binding.noMessagesText.visibility = View.VISIBLE
         updateInboxBadge(0)
 
-        val reportNodes = listOf(FIRE_NODE, OTHER_NODE, EMS_NODE, SMS_NODE)
-
         reportNodes.forEach { nodePath ->
             val query = database.child(nodePath)
             val listener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    if (_binding == null) return // <-- Add this check
-                    // existing code...
+                    if (_binding == null) return
+
+                    Log.d("InboxFragment", "Node updated: $nodePath, children: ${snapshot.childrenCount}")
+
+                    // Remove old messages for this category
+                    val category = when (nodePath.substringAfterLast("/")) {
+                        "FireReport" -> "fire"
+                        "OtherEmergencyReport" -> "other"
+                        "EmergencyMedicalServicesReport" -> "ems"
+                        "SmsReport" -> "sms"
+                        else -> "all"
+                    }
+
+                    allMessages.removeAll { it.category == category }
+
+                    snapshot.children.forEach { reportSnap ->
+                        // Check if report belongs to current user
+                        val reporterEmail = reportSnap.child("email").getValue(String::class.java)
+                        val fireStationName = reportSnap.child("fireStationName").getValue(String::class.java)
+                        val reporterName = reportSnap.child("name").getValue(String::class.java)
+                        if (reporterEmail != currentUserEmail) return@forEach
+
+                        // Find the latest message from station
+                        val messagesSnap = reportSnap.child("messages")
+                        var latestMsgSnap: DataSnapshot? = null
+                        var latestTs: Long = 0L
+
+                        messagesSnap.children.forEach { msgSnap ->
+                            val ts = msgSnap.child("timestamp").getValue(Long::class.java) ?: 0L
+                            if (ts > latestTs) {
+                                latestTs = ts
+                                latestMsgSnap = msgSnap
+                            }
+                        }
+
+                        latestMsgSnap?.let { msgSnap ->
+                            val text = msgSnap.child("text").getValue(String::class.java) ?: "No message provided"
+                            val messageType = msgSnap.child("messageType").getValue(String::class.java) ?: "No type"
+                            val sender = msgSnap.child("sender").getValue(String::class.java) ?: "No sender"
+
+                            val msg = ResponseMessage(
+                                uid = msgSnap.key,
+                                responseMessage = text,
+                                messageType = messageType,
+                                reporterName = reporterName,
+                                fireStationName = fireStationName,
+                                sender = sender,
+                                userEmail = currentUserDocId,
+                                timestamp = latestTs,
+                                isRead = msgSnap.child("isRead").getValue(Boolean::class.java) ?: false,
+                                category = category,
+                                incidentId = reportSnap.key
+                            )
+
+                            allMessages.add(msg)
+                        }
+                    }
+
+                    applyFilter()
+                    unreadMessageCount = allMessages.count { !it.isRead }
+                    updateInboxBadge(unreadMessageCount)
+                    Log.d("InboxFragment", "Total messages: ${allMessages.size}, Visible: ${visibleMessages.size}")
                 }
-                override fun onCancelled(error: DatabaseError) {}
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("InboxFragment", "Failed to load node $nodePath: ${error.message}")
+                }
             }
+
             query.addValueEventListener(listener)
             liveListeners.add(query to listener)
         }
     }
-
 
     private fun applyFilter() {
         if (_binding == null) return
@@ -166,7 +221,7 @@ class InboxFragment : Fragment() {
                 CategoryFilter.ALL -> true
                 CategoryFilter.FIRE -> it.category == "fire"
                 CategoryFilter.OTHER -> it.category == "other"
-                CategoryFilter.EMS -> it.category == "ems"
+                CategoryFilter.EMS -> it.category == "emergencymedicalservicesreport" || it.category == "ems"
                 CategoryFilter.SMS -> it.category == "sms"
             }
         }

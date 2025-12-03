@@ -1,5 +1,6 @@
 package com.example.flare_capstone.util
 
+import android.location.Geocoder
 import android.os.AsyncTask
 import android.util.Log
 import com.example.flare_capstone.views.fragment.user.OtherEmergencyActivity
@@ -12,6 +13,7 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.Locale
 
 class FetchBarangayAddressTask(
     private val activity: Any,
@@ -20,39 +22,35 @@ class FetchBarangayAddressTask(
 ) : AsyncTask<Void, Void, String?>() {
 
     override fun doInBackground(vararg params: Void?): String? {
-        // 1) Quick Overpass relations for barangay + city
+        // 1️⃣ Try Overpass first
         val rels = queryOverpassRelations(latitude, longitude)
         var barangay = pickBarangayFromRelations(rels)?.let { normalizeBarangay(it) }
         var city     = pickCityFromRelations(rels)?.let { normalizeCity(it) }
 
-        // 2) Single Nominatim fallback for whatever is missing
-        if (barangay == null || city == null) {
+        // 2️⃣ Fallback to Nominatim if missing
+        if (barangay.isNullOrBlank() || city.isNullOrBlank()) {
             val nomi = queryFromNominatim(latitude, longitude)
-            if (barangay == null) {
-                barangay = nomi.barangay?.let { normalizeBarangay(it) }
-            }
-            if (city == null) {
-                city = nomi.city?.let { normalizeCity(it) }
-            }
+            if (barangay.isNullOrBlank() && !nomi.barangay.isNullOrBlank())
+                barangay = normalizeBarangay(nomi.barangay)
+            if (city.isNullOrBlank() && !nomi.city.isNullOrBlank())
+                city = normalizeCity(nomi.city)
         }
 
-        // 3) If still nothing useful, give up (caller will handle)
-        if (barangay.isNullOrBlank() && city.isNullOrBlank()) return null
+        // 3️⃣ Fallback to Android Geocoder if still missing
+        if ((barangay.isNullOrBlank() || city.isNullOrBlank()) && activity is FireLevelActivity) {
+            val geocoderAddress = activity.fetchAddressFromCoordsBlocking(latitude, longitude)
+            if (!geocoderAddress.isNullOrBlank()) return geocoderAddress
+        }
 
-        // 4) Compose strictly: Barangay + City (only)
-        val bClean = barangay?.replace(Regex("(?i)^Barangay\\s+"), "")?.trim()
-        val cClean = city?.trim()
-        // Avoid “Barangay San Miguel, San Miguel City” duplication
-        val finalBarangay = if (!bClean.isNullOrEmpty() && !cClean.isNullOrEmpty() && bClean.equals(cClean, true)) null else barangay
+        // 4️⃣ Compose final readable address
+        val result = listOfNotNull(barangay, city).joinToString(", ").ifBlank { null }
 
-        return listOfNotNull(finalBarangay, city)
-            .filter { it.isNotBlank() }
-            .joinToString(", ")
-            .ifBlank { null }
+        return result
     }
 
     override fun onPostExecute(result: String?) {
         super.onPostExecute(result)
+        Log.d("FetchAddress", "onPostExecute -> $result")
         when (activity) {
             is FireLevelActivity -> activity.handleFetchedAddress(result)
             is OtherEmergencyActivity -> activity.handleFetchedAddress(result)
@@ -60,7 +58,19 @@ class FetchBarangayAddressTask(
         }
     }
 
-    /* ---------- Overpass (relations only, fast) ---------- */
+    /** ----------------- Blocking geocoder helper ----------------- */
+    private fun FireLevelActivity.fetchAddressFromCoordsBlocking(lat: Double, lon: Double): String? {
+        return try {
+            val geocoder = Geocoder(this, Locale.getDefault())
+            val addresses = geocoder.getFromLocation(lat, lon, 1)
+            if (!addresses.isNullOrEmpty()) addresses[0].getAddressLine(0) else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /* ---------- Helpers ---------- */
+
     private fun queryOverpassRelations(lat: Double, lon: Double): JSONArray {
         val q = """
             [out:json][timeout:8];
@@ -106,7 +116,6 @@ class FetchBarangayAddressTask(
         return byPlace ?: byLevel
     }
 
-    /* ---------- Nominatim single reverse for both fields ---------- */
     private data class Nomi(val barangay: String?, val city: String?)
     private fun queryFromNominatim(lat: Double, lon: Double): Nomi {
         val u = URL("https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json&addressdetails=1&zoom=18")
@@ -125,49 +134,55 @@ class FetchBarangayAddressTask(
             val body = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
             val addr = JSONObject(body).optJSONObject("address") ?: return Nomi(null, null)
 
-            val brgy = listOf("barangay", "city_district", "suburb", "village")
+            val brgy = listOf("barangay", "city_district", "suburb", "village", "neighbourhood", "hamlet")
                 .firstNotNullOfOrNull { k -> addr.optString(k).takeIf { it.isNotBlank() } }
 
             val city = listOf("city","town","municipality")
                 .firstNotNullOfOrNull { k -> addr.optString(k).takeIf { it.isNotBlank() } }
 
             Nomi(brgy, city)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e("FetchAddress", "Nominatim error: ${e.message}")
             Nomi(null, null)
         } finally { conn?.disconnect() }
     }
 
-    /* ---------- Shared helpers ---------- */
     private fun overpassPost(query: String): JSONArray {
         val mirrors = listOf(
             "https://overpass-api.de/api/interpreter",
-            "https://overpass.kumi.systems/api/interpreter"
+            "https://overpass.kumi.systems/api/interpreter",
+            "https://overpass.openstreetmap.ru/api/interpreter" // extra mirror
         )
-        for (ep in mirrors) {
-            var conn: HttpURLConnection? = null
-            try {
-                conn = (URL(ep).openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    doOutput = true
-                    setRequestProperty("User-Agent", "FlareCapstone/1.0 (contact: you@example.com)")
-                    setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-                    connectTimeout = 3000
-                    readTimeout   = 5000
-                }
-                val body = "data=" + URLEncoder.encode(query, "UTF-8")
-                conn.outputStream.use { it.write(body.toByteArray()) }
-                val code = conn.responseCode
-                val txt  = BufferedReader(InputStreamReader(
-                    if (code in 200..299) conn.inputStream else (conn.errorStream ?: conn.inputStream)
-                )).use { it.readText() }
-                if (code in 200..299) {
-                    return JSONObject(txt).optJSONArray("elements") ?: JSONArray()
-                } else {
-                    Log.e("Overpass", "HTTP $code from $ep: $txt")
-                }
-            } catch (e: Exception) {
-                Log.e("Overpass", "Error with $ep: ${e.message}")
-            } finally { conn?.disconnect() }
+
+        for (attempt in 1..3) { // retry 3 times
+            for (ep in mirrors) {
+                var conn: HttpURLConnection? = null
+                try {
+                    conn = (URL(ep).openConnection() as HttpURLConnection).apply {
+                        requestMethod = "POST"
+                        doOutput = true
+                        setRequestProperty("User-Agent", "FlareCapstone/1.0")
+                        setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                        connectTimeout = 5000
+                        readTimeout = 7000
+                    }
+                    val body = "data=" + URLEncoder.encode(query, "UTF-8")
+                    conn.outputStream.use { it.write(body.toByteArray()) }
+                    val code = conn.responseCode
+                    val txt  = BufferedReader(InputStreamReader(
+                        if (code in 200..299) conn.inputStream else (conn.errorStream ?: conn.inputStream)
+                    )).use { it.readText() }
+
+                    if (code in 200..299) {
+                        return JSONObject(txt).optJSONArray("elements") ?: JSONArray()
+                    } else {
+                        Log.e("Overpass", "HTTP $code from $ep: $txt")
+                    }
+                } catch (e: Exception) {
+                    Log.e("Overpass", "Attempt $attempt failed for $ep: ${e.message}")
+                } finally { conn?.disconnect() }
+            }
+            Thread.sleep(2000L) // wait 2s before next attempt
         }
         return JSONArray()
     }

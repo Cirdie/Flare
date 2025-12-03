@@ -9,8 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.flare_capstone.views.fragment.user.FireReportResponseActivity
 import com.example.flare_capstone.data.model.ResponseMessage
 import com.example.flare_capstone.databinding.ItemFireStationBinding
-import com.google.firebase.database.*
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.database.FirebaseDatabase
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -19,14 +18,15 @@ class ResponseMessageAdapter(
     private val onMarkedRead: (() -> Unit)? = null
 ) : RecyclerView.Adapter<ResponseMessageAdapter.ViewHolder>() {
 
-    private val firestore = FirebaseFirestore.getInstance()
-    inner class ViewHolder(val binding: ItemFireStationBinding) : RecyclerView.ViewHolder(binding.root)
-
     private val timeFmt = SimpleDateFormat("h:mm a", Locale.getDefault())
-    private fun formatTime(ts: Long?) = ts?.let {
-        val millis = if (it < 1_000_000_000_000L) it * 1000 else it
-        timeFmt.format(Date(millis))
-    } ?: ""
+
+    private fun formatTime(ts: Long?): String {
+        ts ?: return ""
+        val millis = if (ts < 1_000_000_000_000L) ts * 1000 else ts
+        return timeFmt.format(Date(millis))
+    }
+
+    inner class ViewHolder(val binding: ItemFireStationBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemFireStationBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -37,66 +37,56 @@ class ResponseMessageAdapter(
         val item = list[position]
         val isUnread = !item.isRead
 
-        // Station Name
         holder.binding.fireStationName.apply {
             text = item.fireStationName ?: "Fire Station"
             setTypeface(null, if (isUnread) Typeface.BOLD else Typeface.NORMAL)
             setTextColor(if (isUnread) Color.BLACK else Color.parseColor("#1A1A1A"))
         }
 
-        // Message text
+        // Determine message display text
+        val displayText = when (item.messageType) {
+            "audio" -> if (item.sender?.lowercase() == "user") "You: Sent a voice message" else "Sent a voice message"
+            "image" -> if (item.sender?.lowercase() == "user") "You: Sent an image" else "Sent an image"
+            "emoji" -> if (item.sender?.lowercase() == "user") "You: Sent an emoji" else "Sent an emoji"
+            else -> if (item.sender?.lowercase() == "user") "You: ${item.responseMessage}" else item.responseMessage ?: "No message"
+        }
+
+
         holder.binding.uid.apply {
-            text = item.responseMessage ?: "Loading…"
+            text = displayText
             setTypeface(null, if (isUnread) Typeface.BOLD else Typeface.NORMAL)
             setTextColor(if (isUnread) Color.BLACK else Color.parseColor("#1A1A1A"))
         }
 
-        // Timestamp
         holder.binding.timestamp.text = formatTime(item.timestamp)
 
         holder.itemView.setOnClickListener {
             if (isUnread) {
-                // Mark message read in Firestore
-                firestore.collection("users")
-                    .whereEqualTo("email", item.contact)
-                    .get()
-                    .addOnSuccessListener { docs ->
-                        docs.forEach { doc ->
-                            doc.reference.update("messages.${item.uid}.isRead", true)
-                        }
-                    }
-                    .addOnFailureListener {
-                        // fallback to RTDB
-                        FirebaseDatabase.getInstance().reference
-                            .child(item.category?.let { "AllReport/${it.capitalize()}" } ?: "AllReport/FireReport")
-                            .child(item.uid).child("messages").get()
-                            .addOnSuccessListener { snap ->
-                                val updates = mutableMapOf<String, Any?>()
-                                snap.children.forEach { m -> updates["${m.key}/isRead"] = true }
-                                if (updates.isNotEmpty())
-                                    FirebaseDatabase.getInstance().reference
-                                        .child(item.category?.let { "AllReport/${it.capitalize()}" } ?: "AllReport/FireReport")
-                                        .child(item.uid).child("messages").updateChildren(updates)
-                            }
-                    }
+                // Mark message as read in Realtime DB
+                item.stationNode?.let { node ->
+                    FirebaseDatabase.getInstance().reference
+                        .child("AllReport/${item.category?.capitalize()}")
+                        .child(node).child("messages").child(item.uid.toString())
+                        .child("isRead").setValue(true)
+                }
 
                 item.isRead = true
                 notifyItemChanged(position)
                 onMarkedRead?.invoke()
             }
 
-            // Open details activity
+            // Open details
             val intent = Intent(holder.itemView.context, FireReportResponseActivity::class.java).apply {
+                putExtra("INCIDENT_ID", item.incidentId)
+                putExtra("USER_EMAIL", item.userEmail)
+                putExtra("REPORTER_NAME", item.reporterName)
                 putExtra("UID", item.uid)
-                putExtra("CONTACT", item.contact)
-                putExtra("NAME", item.reporterName)
-                putExtra("INCIDENT_ID", item.uid)
+                putExtra("NAME", item.fireStationName)
                 putExtra("CATEGORY", item.category)
             }
             holder.itemView.context.startActivity(intent)
         }
     }
-
 
     override fun getItemCount(): Int = list.size
 }

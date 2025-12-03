@@ -4,6 +4,7 @@ plugins {
     id("kotlin-kapt")
 }
 
+
 android {
     namespace = "com.example.flare_capstone"
     compileSdk = 35
@@ -32,6 +33,9 @@ android {
             )
         }
     }
+
+
+
 
     buildFeatures {
         viewBinding = true

@@ -163,6 +163,26 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="textUri"/>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/readableAddressLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Readable address"
+                            android:layout_marginTop="12dp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/readableAddressInput"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textCapSentences|textMultiLine"
+                                android:lines="2"
+                                android:maxLines="4"
+                                android:minLines="2"/>
+                        </com.google.android.material.textfield.TextInputLayout>
+
+
+
                     </com.google.android.material.textfield.TextInputLayout>
 
                 </LinearLayout>

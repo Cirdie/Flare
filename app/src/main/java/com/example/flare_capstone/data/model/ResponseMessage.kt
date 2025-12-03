@@ -1,9 +1,10 @@
 package com.example.flare_capstone.data.model
 
 data class ResponseMessage(
-    var uid: String = "",
+    var uid: String? = "",
     var stationNode: String? = null,              // <-- carry the exact node (e.g., "LaFilipinaFireStation")
     var fireStationName: String? = null,
+    var userEmail: String? = null,
     val incidentId: String? = null,
     val reporterName: String? = null,
     val contact: String? = null,
@@ -11,6 +12,9 @@ data class ResponseMessage(
     val responseDate: String = "1970-01-01",
     val responseTime: String = "00:00:00",
     var imageBase64: String? = null,
+    var videoBase64: String? = null,  // new
+    var messageType: String? = null,
+    var sender: String? = null,
     var timestamp: Long? = 0L,
     var isRead: Boolean = false,
     var category: String? = null // "fire" / "other"
