@@ -124,11 +124,11 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Location via Google Maps Link -->
+            <!-- Location via Map Pinpoint -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/locationLinkCard"
-                android:visibility="gone"
                 android:layout_width="match_parent"
+                android:visibility="gone"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 app:cardCornerRadius="16dp"
@@ -146,47 +146,58 @@
                         android:id="@+id/locationLinkLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Location (Google Maps link)"
+                        android:text="Pinpoint Location on Map"
                         android:textStyle="bold"
                         android:textSize="16sp"
                         android:textColor="?attr/colorOnSurface" />
 
+                    <!-- Map fragment for user to pick a location -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/locationMapCard"
+                        android:layout_width="match_parent"
+                        android:layout_height="270dp"
+                        android:layout_marginTop="12dp"
+                        app:cardCornerRadius="16dp"
+                        app:cardUseCompatPadding="true"
+                        app:strokeColor="?attr/colorOutline"
+                        app:strokeWidth="1dp">
+
+                        <fragment
+                            android:id="@+id/locationMap"
+                            android:name="com.google.android.gms.maps.SupportMapFragment"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <Button
+                        android:id="@+id/btnClearPin"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="Clear Pin"
+                        />
+
+                    <!-- User can type exact description / readable address -->
                     <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/locationLinkLayout"
+                        android:id="@+id/readableAddressLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Paste Google Maps link here"
-                        android:layout_marginTop="10dp">
+                        android:hint="Exact Location / Description"
+                        android:layout_marginTop="12dp">
 
                         <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/locationLinkInput"
+                            android:id="@+id/readableAddressInput"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="textUri"/>
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/readableAddressLayout"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:hint="Readable address"
-                            android:layout_marginTop="12dp">
-
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/readableAddressInput"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:inputType="textCapSentences|textMultiLine"
-                                android:lines="2"
-                                android:maxLines="4"
-                                android:minLines="2"/>
-                        </com.google.android.material.textfield.TextInputLayout>
-
-
-
+                            android:inputType="textCapSentences|textMultiLine"
+                            android:lines="2"
+                            android:maxLines="4"
+                            android:minLines="2"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
+
 
             <!-- Camera -->
             <com.google.android.material.card.MaterialCardView

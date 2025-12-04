@@ -43,6 +43,13 @@
     import com.google.android.gms.location.LocationResult
     import com.google.android.gms.location.LocationServices
     import com.google.android.gms.location.Priority
+    import com.google.android.gms.maps.CameraUpdateFactory
+    import com.google.android.gms.maps.GoogleMap
+    import com.google.android.gms.maps.OnMapReadyCallback
+    import com.google.android.gms.maps.SupportMapFragment
+    import com.google.android.gms.maps.model.LatLng
+    import com.google.android.gms.maps.model.Marker
+    import com.google.android.gms.maps.model.MarkerOptions
     import com.google.firebase.auth.FirebaseAuth
     import com.google.firebase.database.FirebaseDatabase
     import com.google.firebase.firestore.FirebaseFirestore
@@ -59,7 +66,7 @@
     import java.util.concurrent.Executors
 
 
-    class FireLevelActivity : AppCompatActivity() {
+    class FireLevelActivity : AppCompatActivity(), OnMapReadyCallback {
 
         /* ---------------- View / Firebase / Location ---------------- */
         private lateinit var binding: ActivityFireLevelBinding
@@ -74,6 +81,7 @@
         private val CAMERA_PERMISSION_REQUEST_CODE = 1002
 
         /* ---------------- Location State ---------------- */
+        private lateinit var googleMap: GoogleMap
         private var latitude: Double = 0.0
         private var longitude: Double = 0.0
         private val LOCATION_PERMISSION_REQUEST_CODE = 1001
@@ -86,6 +94,8 @@
         private val TAGUM_CENTER_LAT = 7.447725
         private val TAGUM_CENTER_LON = 125.804150
         private val TAGUM_RADIUS_METERS = 11_000f
+        private val DEFAULT_ZOOM = 13f // Float value for zoom level
+
 
         private var isResolvingLocation = false
         private var locationConfirmed = false
@@ -97,10 +107,17 @@
         private var locatingDialogMessage: TextView? = null
         private var isMyLocation: Boolean = true // default to My Location
 
+        private var currentMarker: Marker? = null
+
         private val options = listOf(
             "My Location",      // default
             "Not My Location"   // user wants to paste a link
         )
+
+        companion object {
+            private const val MAP_PICKER_REQUEST_CODE = 2001
+        }
+
 
         /* ========================================================= */
         override fun onCreate(savedInstanceState: Bundle?) {
@@ -108,6 +125,12 @@
             super.onCreate(savedInstanceState)
             binding = ActivityFireLevelBinding.inflate(layoutInflater)
             setContentView(binding.root)
+
+            // Initialize map
+            val mapFragment = supportFragmentManager
+                .findFragmentById(R.id.locationMap) as SupportMapFragment
+            mapFragment.getMapAsync(this)
+
 
             auth = FirebaseAuth.getInstance()
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
@@ -125,8 +148,8 @@
             // Camera
             checkCameraPermissionAndStart()
 
-    //        // Dropdown from DB (CanocotanFireStation/ManageApplication/FireReport/Option)
-    //        populateDropdownFromDB()
+            //        // Dropdown from DB (CanocotanFireStation/ManageApplication/FireReport/Option)
+            //        populateDropdownFromDB()
 
             populateDropdownStatic()
             populateLocationSourceDropdown()
@@ -142,117 +165,43 @@
             }
             binding.sendButton.setOnClickListener { showSendConfirmationDialog() }
 
-            binding.locationLinkInput.addTextChangedListener(object : TextWatcher {
-                override fun afterTextChanged(s: Editable?) {
-                    if (isMyLocation) return // GPS mode, ignore pasted input
-
-                    val pastedLocation = s.toString().trim()
-                    if (pastedLocation.isBlank()) return
-
-                    if (pastedLocation.contains("+")) {
-                        // Looks like a Plus Code
-                        beginLocationConfirmation("Getting coordinates from Plus Code…")
-                        handlePlusCodeInput(pastedLocation)
-                    } else if (!isValidGoogleMapsLink(pastedLocation)) {
-                        readableAddress = null
-                        Toast.makeText(this@FireLevelActivity, "Please enter a valid Google Maps link or Plus Code.", Toast.LENGTH_SHORT).show()
-                        return
-                    } else {
-                        // Google Maps link
-                        beginLocationConfirmation("Getting coordinates from link…")
-                        if (pastedLocation.contains("maps.app.goo.gl")) {
-                            resolveShortLink(pastedLocation) { resolvedUrl ->
-                                runOnUiThread {
-                                    if (resolvedUrl != null) handleResolvedUrl(resolvedUrl)
-                                    else {
-                                        readableAddress = null
-                                        endLocationConfirmation(false, "Could not resolve short link")
-                                    }
-                                }
-                            }
-                        } else {
-                            handleResolvedUrl(pastedLocation)
-                        }
-                    }
-                }
-
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            })
-
+            binding.btnClearPin.setOnClickListener {
+                currentMarker?.remove()
+                currentMarker = null
+                latitude = 0.0
+                longitude = 0.0
+                readableAddress = null
+                it.visibility = View.GONE
+            }
 
 
             // FCM
             FirebaseMessaging.getInstance().subscribeToTopic("all")
         }
 
-    //    private fun getUserLocationAndFetchAddress() {
-    //        if (ActivityCompat.checkSelfPermission(
-    //                this,
-    //                Manifest.permission.ACCESS_FINE_LOCATION
-    //            ) != PackageManager.PERMISSION_GRANTED &&
-    //            ActivityCompat.checkSelfPermission(
-    //                this,
-    //                Manifest.permission.ACCESS_COARSE_LOCATION
-    //            ) != PackageManager.PERMISSION_GRANTED
-    //        ) return
-    //
-    //        fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
-    //            if (loc != null) {
-    //                latitude = loc.latitude
-    //                longitude = loc.longitude
-    //                FetchBarangayAddressTask(this, latitude, longitude).execute()
-    //            } else {
-    //                // Fallback: request updates
-    //                requestLocationUpdates()
-    //            }
-    //        }
-    //    }
 
-        private fun handleResolvedUrl(url: String) {
-            val coords = extractCoordinatesFromUrl(url)
-            if (coords != null) {
-                latitude = coords.first
-                longitude = coords.second
-                // IMPORTANT: Do NOT fetch readable address
-                readableAddress = "" // User will type manually
-                endLocationConfirmation(true, "Coordinates extracted: Lat=$latitude, Lon=$longitude")
-            } else {
-                endLocationConfirmation(false, "Could not parse coordinates from link")
+        override fun onMapReady(map: GoogleMap) {
+            googleMap = map
+
+            val tagumLatLng = LatLng(TAGUM_CENTER_LAT, TAGUM_CENTER_LON)
+            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(tagumLatLng, DEFAULT_ZOOM))
+
+            googleMap.setOnMapClickListener { latLng ->
+                latitude = latLng.latitude
+                longitude = latLng.longitude
+
+                // Remove previous marker
+                currentMarker?.remove()
+
+                // Add new marker
+                currentMarker = googleMap.addMarker(
+                    MarkerOptions().position(latLng).title("Selected Location")
+                )
+
+                // Show the clear pin button
+                binding.btnClearPin.visibility = View.VISIBLE
             }
         }
-
-
-        private fun resolveShortLink(url: String, callback: (String?) -> Unit) {
-            Thread {
-                try {
-                    var current = url
-                    var finalUrl: String? = null
-
-                    for (i in 0 until 10) {   // follow up to 10 redirects
-                        val conn = URL(current).openConnection() as HttpURLConnection
-                        conn.instanceFollowRedirects = false
-                        conn.connect()
-
-                        val redirect = conn.getHeaderField("Location")
-                        conn.disconnect()
-
-                        if (redirect == null) {
-                            finalUrl = current
-                            break
-                        } else {
-                            current = redirect
-                        }
-                    }
-
-                    callback(finalUrl)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    callback(null)
-                }
-            }.start()
-        }
-
 
 
 
@@ -275,6 +224,7 @@
                     }
                 }
             }
+
             override fun onLost(network: Network) {
                 runOnUiThread {
                     showLoadingDialog("No internet connection")
@@ -301,80 +251,107 @@
             loadingDialog?.show()
             loadingDialog?.findViewById<TextView>(R.id.loading_message)?.text = message
         }
-        private fun hideLoadingDialog() { loadingDialog?.dismiss() }
+
+        private fun hideLoadingDialog() {
+            loadingDialog?.dismiss()
+        }
 
         /* ======================== Permissions ====================== */
         private fun checkPermissionsAndGetLocation() {
-            val fineOk = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-            val coarseOk = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            val fineOk = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            val coarseOk = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
             if (fineOk && coarseOk) requestLocationUpdates()
-            else ActivityCompat.requestPermissions(this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
-                LOCATION_PERMISSION_REQUEST_CODE)
+            else ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
         }
+
         private fun checkCameraPermissionAndStart() {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.CAMERA
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
                 startCameraPreview()
             } else {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_REQUEST_CODE)
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.CAMERA),
+                    CAMERA_PERMISSION_REQUEST_CODE
+                )
             }
         }
+
         @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
         override fun onRequestPermissionsResult(code: Int, p: Array<out String>, r: IntArray) {
             super.onRequestPermissionsResult(code, p, r)
             when (code) {
                 LOCATION_PERMISSION_REQUEST_CODE ->
                     if (r.all { it == PackageManager.PERMISSION_GRANTED }) requestLocationUpdates()
-                    else Toast.makeText(this, "Location permission needed.", Toast.LENGTH_SHORT).show()
+                    else Toast.makeText(this, "Location permission needed.", Toast.LENGTH_SHORT)
+                        .show()
+
                 CAMERA_PERMISSION_REQUEST_CODE ->
                     if (r.all { it == PackageManager.PERMISSION_GRANTED }) startCameraPreview()
-                    else Toast.makeText(this, "Camera permission needed.", Toast.LENGTH_SHORT).show()
+                    else Toast.makeText(this, "Camera permission needed.", Toast.LENGTH_SHORT)
+                        .show()
             }
         }
 
-    //
-    //
-    //    /* =================== Dropdown from Realtime DB ============== */
-    //    private fun populateDropdownFromDB() {
-    //        val db = FirebaseDatabase.getInstance().reference
-    //            .child("TagumCityCentralFireStation")
-    //            .child("ManageApplication")
-    //            .child("FireReport")
-    //            .child("Option")
-    //
-    //        db.addListenerForSingleValueEvent(object : ValueEventListener {
-    //            override fun onDataChange(snapshot: DataSnapshot) {
-    //                // Case 1: single comma-separated string
-    //                val asString = snapshot.getValue(String::class.java)
-    //                if (!asString.isNullOrBlank()) {
-    //                    val items = asString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-    //                    val adapter = ArrayAdapter(this@FireLevelActivity, android.R.layout.simple_list_item_1, items)
-    //                    binding.emergencyDropdown.setAdapter(adapter)
-    //                    binding.emergencyDropdown.setOnClickListener { binding.emergencyDropdown.showDropDown() }
-    //                    return
-    //                }
-    //                // Case 2: list/map children
-    //                if (snapshot.exists() && snapshot.childrenCount > 0) {
-    //                    val list = mutableListOf<String>()
-    //                    snapshot.children.forEach { child ->
-    //                        child.getValue(String::class.java)?.trim()?.takeIf { it.isNotEmpty() }?.let(list::add)
-    //                    }
-    //                    if (list.isNotEmpty()) {
-    //                        val adapter = ArrayAdapter(this@FireLevelActivity, android.R.layout.simple_list_item_1, list)
-    //                        binding.emergencyDropdown.setAdapter(adapter)
-    //                        binding.emergencyDropdown.setOnClickListener { binding.emergencyDropdown.showDropDown() }
-    //                    } else {
-    //                        Toast.makeText(this@FireLevelActivity, "No options found.", Toast.LENGTH_SHORT).show()
-    //                    }
-    //                } else {
-    //                    Toast.makeText(this@FireLevelActivity, "Option node is empty.", Toast.LENGTH_SHORT).show()
-    //                }
-    //            }
-    //            override fun onCancelled(error: DatabaseError) {
-    //                Toast.makeText(this@FireLevelActivity, "Failed to load options: ${error.message}", Toast.LENGTH_SHORT).show()
-    //            }
-    //        })
-    //    }
+        //
+        //
+        //    /* =================== Dropdown from Realtime DB ============== */
+        //    private fun populateDropdownFromDB() {
+        //        val db = FirebaseDatabase.getInstance().reference
+        //            .child("TagumCityCentralFireStation")
+        //            .child("ManageApplication")
+        //            .child("FireReport")
+        //            .child("Option")
+        //
+        //        db.addListenerForSingleValueEvent(object : ValueEventListener {
+        //            override fun onDataChange(snapshot: DataSnapshot) {
+        //                // Case 1: single comma-separated string
+        //                val asString = snapshot.getValue(String::class.java)
+        //                if (!asString.isNullOrBlank()) {
+        //                    val items = asString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        //                    val adapter = ArrayAdapter(this@FireLevelActivity, android.R.layout.simple_list_item_1, items)
+        //                    binding.emergencyDropdown.setAdapter(adapter)
+        //                    binding.emergencyDropdown.setOnClickListener { binding.emergencyDropdown.showDropDown() }
+        //                    return
+        //                }
+        //                // Case 2: list/map children
+        //                if (snapshot.exists() && snapshot.childrenCount > 0) {
+        //                    val list = mutableListOf<String>()
+        //                    snapshot.children.forEach { child ->
+        //                        child.getValue(String::class.java)?.trim()?.takeIf { it.isNotEmpty() }?.let(list::add)
+        //                    }
+        //                    if (list.isNotEmpty()) {
+        //                        val adapter = ArrayAdapter(this@FireLevelActivity, android.R.layout.simple_list_item_1, list)
+        //                        binding.emergencyDropdown.setAdapter(adapter)
+        //                        binding.emergencyDropdown.setOnClickListener { binding.emergencyDropdown.showDropDown() }
+        //                    } else {
+        //                        Toast.makeText(this@FireLevelActivity, "No options found.", Toast.LENGTH_SHORT).show()
+        //                    }
+        //                } else {
+        //                    Toast.makeText(this@FireLevelActivity, "Option node is empty.", Toast.LENGTH_SHORT).show()
+        //                }
+        //            }
+        //            override fun onCancelled(error: DatabaseError) {
+        //                Toast.makeText(this@FireLevelActivity, "Failed to load options: ${error.message}", Toast.LENGTH_SHORT).show()
+        //            }
+        //        })
+        //    }
 
         /** Static dropdown list for fire report types */
         private fun populateDropdownStatic() {
@@ -413,9 +390,15 @@
                     .build()
                 try {
                     provider.unbindAll()
-                    provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture)
+                    provider.bindToLifecycle(
+                        this,
+                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        preview,
+                        imageCapture
+                    )
                 } catch (e: Exception) {
-                    Toast.makeText(this, "Camera start failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Camera start failed: ${e.message}", Toast.LENGTH_SHORT)
+                        .show()
                 }
             }, ContextCompat.getMainExecutor(this))
         }
@@ -427,8 +410,15 @@
 
             ic.takePicture(opts, cameraExecutor, object : ImageCapture.OnImageSavedCallback {
                 override fun onError(e: ImageCaptureException) {
-                    runOnUiThread { Toast.makeText(this@FireLevelActivity, "Capture failed: ${e.message}", Toast.LENGTH_SHORT).show() }
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@FireLevelActivity,
+                            "Capture failed: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
+
                 override fun onImageSaved(r: ImageCapture.OutputFileResults) {
                     capturedFile = file
                     capturedOnce = true
@@ -443,7 +433,10 @@
         }
 
         private fun retakePhoto() {
-            try { capturedFile?.delete() } catch (_: Exception) {}
+            try {
+                capturedFile?.delete()
+            } catch (_: Exception) {
+            }
             capturedFile = null
             capturedOnce = false
             binding.capturedPhoto.setImageDrawable(null)
@@ -479,7 +472,9 @@
             Location.distanceBetween(lat, lon, TAGUM_CENTER_LAT, TAGUM_CENTER_LON, res)
             return res[0] <= TAGUM_RADIUS_METERS
         }
-        private fun looksLikeTagum(text: String?) = !text.isNullOrBlank() && text.contains("tagum", ignoreCase = true)
+
+        private fun looksLikeTagum(text: String?) =
+            !text.isNullOrBlank() && text.contains("tagum", ignoreCase = true)
 
         fun handleFetchedAddress(address: String?) {
             val cleaned = address?.trim().orEmpty()
@@ -495,7 +490,10 @@
             }
 
             if (isInTagum) {
-                endLocationConfirmation(true, "Location confirmed${if (readableAddress!!.isNotBlank()) ": $readableAddress" else ""}")
+                endLocationConfirmation(
+                    true,
+                    "Location confirmed${if (readableAddress!!.isNotBlank()) ": $readableAddress" else ""}"
+                )
             } else {
                 endLocationConfirmation(false, "Outside Tagum area. You can't submit a report.")
             }
@@ -556,7 +554,8 @@
         }
 
         private fun isValidGoogleMapsLink(link: String): Boolean {
-            val regex = Regex("""https://(www\.)?(google\.com/maps|maps\.app\.goo\.gl|goo\.gl/maps)/.*""")
+            val regex =
+                Regex("""https://(www\.)?(google\.com/maps|maps\.app\.goo\.gl|goo\.gl/maps)/.*""")
             return regex.matches(link)
         }
 
@@ -586,13 +585,12 @@
         }
 
 
-
-
         /* =========================== Send ========================== */
         private fun showSendConfirmationDialog() {
             if (!locationConfirmed) {
                 if (!isResolvingLocation) beginLocationConfirmation()
-                Toast.makeText(this, "Please wait — confirming your location…", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please wait — confirming your location…", Toast.LENGTH_SHORT)
+                    .show()
                 return
             }
 
@@ -602,21 +600,15 @@
                 return
             }
 
-            // Require link if Not My Location
             if (!isMyLocation) {
-                val link = binding.locationLinkInput.text?.toString()?.trim().orEmpty()
-                if (link.isEmpty()) {
-                    Toast.makeText(this, "Please enter a Google Maps link for the location.", Toast.LENGTH_SHORT).show()
-                    return
-                }
-                if (readableAddress.isNullOrBlank()) {
-                    Toast.makeText(this, "Waiting to confirm pasted location…", Toast.LENGTH_SHORT).show()
+                val userAddr = binding.readableAddressInput.text?.toString()?.trim()
+                if (userAddr.isNullOrBlank()) {
+                    Toast.makeText(this, "Please type a readable address for the pinned location.", Toast.LENGTH_SHORT).show()
                     return
                 }
             }
 
             val addr = binding.readableAddressInput.text?.toString()?.trim().orEmpty()
-
 
             val now = Date()
             val hasPhoto = capturedFile != null
@@ -644,7 +636,8 @@
                 try {
                     val geocoder = Geocoder(this, Locale.getDefault())
                     val addresses = geocoder.getFromLocation(lat, lon, 1)
-                    val address = if (!addresses.isNullOrEmpty()) addresses[0].getAddressLine(0) else null
+                    val address =
+                        if (!addresses.isNullOrEmpty()) addresses[0].getAddressLine(0) else null
                     runOnUiThread { callback(address) }
                 } catch (e: Exception) {
                     runOnUiThread { callback(null) }
@@ -664,11 +657,20 @@
             } else {
                 val waitMs = 5 * 60 * 1000 - (now - lastReportTime)
                 val original = binding.sendButton.text.toString()
-                Toast.makeText(this, "Please wait ${waitMs / 1000} seconds before submitting again.", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this,
+                    "Please wait ${waitMs / 1000} seconds before submitting again.",
+                    Toast.LENGTH_LONG
+                ).show()
                 binding.sendButton.isEnabled = false
                 object : CountDownTimer(waitMs, 1000) {
-                    override fun onTick(ms: Long) { binding.sendButton.text = "Wait (${ms / 1000})" }
-                    override fun onFinish() { binding.sendButton.text = original; binding.sendButton.isEnabled = true }
+                    override fun onTick(ms: Long) {
+                        binding.sendButton.text = "Wait (${ms / 1000})"
+                    }
+
+                    override fun onFinish() {
+                        binding.sendButton.text = original; binding.sendButton.isEnabled = true
+                    }
                 }.start()
             }
         }
@@ -749,7 +751,11 @@
                         .addOnSuccessListener { stationsSnap ->
                             if (stationsSnap.isEmpty) {
                                 resetOverlay()
-                                Toast.makeText(this, "No active Central fire stations found.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    this,
+                                    "No active Central fire stations found.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                                 return@addOnSuccessListener
                             }
 
@@ -763,7 +769,11 @@
 
                             val nearest = stationDistances.minByOrNull { it.second } ?: run {
                                 resetOverlay()
-                                Toast.makeText(this, "No valid fire stations found.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    this,
+                                    "No valid fire stations found.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                                 return@addOnSuccessListener
                             }
 
@@ -782,29 +792,44 @@
                                 .setValue(report)
                                 .addOnSuccessListener {
                                     lastReportTime = currentTime
-                                    Toast.makeText(this, "Report sent to $stationName", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        this,
+                                        "Report sent to $stationName",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                     resetOverlay()
                                     startActivity(Intent(this, UserActivity::class.java))
                                     finish()
                                 }
                                 .addOnFailureListener {
                                     resetOverlay()
-                                    Toast.makeText(this, "Failed to submit: ${it.message}", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        this,
+                                        "Failed to submit: ${it.message}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
 
                         }
                         .addOnFailureListener {
                             resetOverlay()
-                            Toast.makeText(this, "Failed to fetch fire stations: ${it.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                this,
+                                "Failed to fetch fire stations: ${it.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
 
                 }
                 .addOnFailureListener {
                     resetOverlay()
-                    Toast.makeText(this, "Failed to fetch user data: ${it.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this,
+                        "Failed to fetch user data: ${it.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
         }
-
 
 
         /* =============== Image compression → Base64 (lighter) ====== */
@@ -826,13 +851,15 @@
                 }
                 return sample
             }
+
             val inSample = computeSampleSize(opts.outWidth, opts.outHeight, maxDim)
             val decodeOpts = BitmapFactory.Options().apply {
                 inSampleSize = inSample
                 inPreferredConfig = Bitmap.Config.RGB_565
             }
-            val decoded = FileInputStream(file).use { BitmapFactory.decodeStream(it, null, decodeOpts) }
-                ?: return ""
+            val decoded =
+                FileInputStream(file).use { BitmapFactory.decodeStream(it, null, decodeOpts) }
+                    ?: return ""
 
             val w = decoded.width
             val h = decoded.height
@@ -888,7 +915,6 @@
         }
 
 
-
         private fun populateLocationSourceDropdown() {
 
             val adapter = ArrayAdapter(
@@ -900,27 +926,57 @@
             binding.locationSourceDropdown.setAdapter(adapter)
             binding.locationSourceDropdown.setText("My Location", false)
 
-            // Show/hide Google Maps link card
             binding.locationSourceDropdown.setOnItemClickListener { _, _, position, _ ->
                 val selected = options[position]
-
-                isMyLocation = selected == "My Location" // 👈 update boolean flag
+                isMyLocation = selected == "My Location"
 
                 if (!isMyLocation) {
-                    // User wants to paste a link
+                    // Show map for user to pick a pin
                     binding.locationLinkCard.visibility = View.VISIBLE
                     binding.cameraCard.visibility = View.GONE
+
+                    // Reset previous GPS values
+                    latitude = 0.0
+                    longitude = 0.0
+
+                    // Do NOT fetch barangay / auto address
+                    readableAddress = null
                 } else {
-                    // User wants to use GPS
+                    // GPS location
                     binding.locationLinkCard.visibility = View.GONE
                     binding.cameraCard.visibility = View.VISIBLE
-                    readableAddress = null           // reset any previous link
+                    readableAddress = null
                     beginLocationConfirmation("Getting Exact Location…")
-                    checkPermissionsAndGetLocation() // restart GPS fetching
+                    checkPermissionsAndGetLocation()
                 }
             }
-
         }
 
+        // Handle result from map picker
+        override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+            super.onActivityResult(requestCode, resultCode, data)
+            if (requestCode == MAP_PICKER_REQUEST_CODE && resultCode == RESULT_OK) {
+                data?.let {
+                    latitude = it.getDoubleExtra("picked_latitude", 0.0)
+                    longitude = it.getDoubleExtra("picked_longitude", 0.0)
+
+                    // exactLocation will be typed by the user
+                    readableAddress = null
+                    Toast.makeText(
+                        this,
+                        "Location pinned at: $latitude, $longitude",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+
+        // When sending the report
+        val exactAddr = if (isMyLocation) {
+            readableAddress.orEmpty() // auto-fetched
+        } else {
+            binding.readableAddressInput.text?.toString()?.trim().orEmpty() // user input
+        }
 
     }
+

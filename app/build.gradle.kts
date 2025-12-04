@@ -121,6 +121,8 @@ dependencies {
     implementation("androidx.navigation:navigation-fragment-ktx:2.9.6")
     implementation("androidx.navigation:navigation-ui-ktx:2.5.0")
 
+    implementation("com.google.maps.android:android-maps-utils:2.3.0")
+
     implementation("com.tbuonomo:dotsindicator:4.3")
 }
 
