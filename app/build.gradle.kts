@@ -109,7 +109,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.2.0")// fused location
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("com.google.firebase:firebase-database:22.0.1")
-
+    implementation("np.com.susanthapa:curved_bottom_navigation:0.6.5")
     implementation("com.github.bumptech.glide:glide:4.16.0")
     kapt("com.github.bumptech.glide:compiler:4.16.0")
 
