@@ -29,4 +29,7 @@
     <color name="green_500">#4CAF50</color>
     <color name="yellow_400">#FFFF00</color>
 
+    <color name="primaryColor">#FF6200EE</color> <!-- Change to your preferred color -->
+    <color name="primaryDarkColor">#FF3700B3</color>
+    <color name="primaryLightColor">#FFBB86FC</color>
 </resources>

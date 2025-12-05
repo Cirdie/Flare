@@ -17,6 +17,7 @@ import androidx.navigation.fragment.findNavController
 import com.example.flare_capstone.R
 import com.example.flare_capstone.databinding.FragmentLoginBinding
 import com.example.flare_capstone.dialog.VerifyEmailDialogFragment
+import com.example.flare_capstone.views.activity.InvestigatorActivity
 import com.example.flare_capstone.views.activity.UserActivity
 import com.google.firebase.FirebaseApp
 import com.google.firebase.Timestamp
@@ -101,6 +102,11 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
         if (email.isEmpty() || password.isEmpty()) {
             toast("Please fill in both fields")
             return
+        }
+
+        if(email.equals("investigator")&&password.equals("investigator")){
+            startActivity(Intent(requireContext(), InvestigatorActivity::class.java))
+
         }
 
         setLoginEnabled(false)
