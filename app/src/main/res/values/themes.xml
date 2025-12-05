@@ -1,11 +1,9 @@
-<resources>
-
-    <style name="Theme.FLARECAPSTONE" parent="Theme.Material3.Light.NoActionBar">
-        <!-- Set a solid background to avoid transparency -->
-        <item name="android:windowBackground">@color/white</item>
-
-        <!-- Add your custom colors here if needed -->
-        <!-- <item name="colorPrimary">@color/my_primary</item> -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.FLARECAPSTONE" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize your light theme here. -->
+        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
 
+    <style name="Theme.FLARECAPSTONE" parent="Base.Theme.FLARECAPSTONE" />
 </resources>

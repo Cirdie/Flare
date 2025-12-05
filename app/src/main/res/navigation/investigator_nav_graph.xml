@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/investigator_nav_graph"
+    app:startDestination="@id/inHomeFragment">
+
+    <!-- ===================== -->
+    <!--        HOME           -->
+    <!-- ===================== -->
+    <fragment
+        android:id="@+id/inHomeFragment"
+        android:name="com.example.flare_capstone.views.fragment.investigator.InHomeFragment"
+        android:label="Home">
+
+        <action android:id="@+id/action_home_to_report" app:destination="@id/reportFlow" />
+        <action android:id="@+id/action_home_to_inbox" app:destination="@id/inInboxFragment" />
+        <action android:id="@+id/action_home_to_profile" app:destination="@id/inPorfileFragment" />
+
+    </fragment>
+
+
+    <!-- ===================== -->
+    <!--      REPORT FLOW      -->
+    <!-- ===================== -->
+    <navigation
+        android:id="@+id/reportFlow"
+        app:startDestination="@id/inReportFragment">
+
+        <!-- Report 1 -->
+        <fragment
+            android:id="@+id/inReportFragment"
+            android:name="com.example.flare_capstone.views.fragment.investigator.InReportFragment"
+            android:label="Report">
+
+            <!-- Actions to other tabs -->
+            <action android:id="@+id/action_report_to_home" app:destination="@id/inHomeFragment" />
+            <action android:id="@+id/action_report_to_inbox" app:destination="@id/inInboxFragment" />
+            <action android:id="@+id/action_report_to_profile" app:destination="@id/inPorfileFragment" />
+
+            <!-- Next step -->
+            <action android:id="@+id/action_to_report2" app:destination="@id/inReport2Fragment" />
+
+        </fragment>
+
+        <!-- Report 2 -->
+        <fragment
+            android:id="@+id/inReport2Fragment"
+            android:name="com.example.flare_capstone.views.fragment.investigator.InReport2Fragment"
+            android:label="Report 2">
+
+            <action android:id="@+id/action_to_report3" app:destination="@id/inReport3Fragment" />
+        </fragment>
+
+        <!-- Report 3 -->
+        <fragment
+            android:id="@+id/inReport3Fragment"
+            android:name="com.example.flare_capstone.views.fragment.investigator.InReport3Fragment"
+            android:label="Report 3">
+
+            <action android:id="@+id/action_to_report4" app:destination="@id/inReport4Fragment" />
+        </fragment>
+
+        <!-- Report 4 -->
+        <fragment
+            android:id="@+id/inReport4Fragment"
+            android:name="com.example.flare_capstone.views.fragment.investigator.InReport4Fragment"
+            android:label="Report 4" />
+    </navigation>
+
+
+    <!-- ===================== -->
+    <!--        INBOX          -->
+    <!-- ===================== -->
+    <fragment
+        android:id="@+id/inInboxFragment"
+        android:name="com.example.flare_capstone.views.fragment.investigator.InInboxFragment"
+        android:label="Inbox">
+
+        <action android:id="@+id/action_inbox_to_home" app:destination="@id/inHomeFragment" />
+        <action android:id="@+id/action_inbox_to_report" app:destination="@id/reportFlow" />
+        <action android:id="@+id/action_inbox_to_profile" app:destination="@id/inPorfileFragment" />
+
+    </fragment>
+
+
+    <!-- ===================== -->
+    <!--        PROFILE        -->
+    <!-- ===================== -->
+    <fragment
+        android:id="@+id/inPorfileFragment"
+        android:name="com.example.flare_capstone.views.fragment.investigator.InPorfileFragment"
+        android:label="Profile">
+
+        <action android:id="@+id/action_profile_to_home" app:destination="@id/inHomeFragment" />
+        <action android:id="@+id/action_profile_to_report" app:destination="@id/reportFlow" />
+        <action android:id="@+id/action_profile_to_inbox" app:destination="@id/inInboxFragment" />
+
+    </fragment>
+
+</navigation>

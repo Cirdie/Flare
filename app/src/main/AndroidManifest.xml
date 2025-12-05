@@ -36,15 +36,17 @@
         android:theme="@style/Theme.FLARECAPSTONE"
         tools:targetApi="31">
         <activity
+            android:name=".views.activity.InvestigatorActivity"
+            android:exported="false" />
+        <activity
             android:name=".views.activity.SplashActivity"
             android:exported="true"> <!-- You can make it exported if it's the launcher activity -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
-
         <activity
             android:name=".views.activity.OnboardingActivity"
             android:exported="false"
@@ -59,8 +61,7 @@
 
         <activity
             android:name=".views.onboarding.Onboard1Activity"
-            android:exported="true">
-        </activity>
+            android:exported="true"></activity>
         <activity android:name=".views.auth.MainActivity" />
         <activity android:name=".views.onboarding.Onboard2Activity" />
         <activity android:name=".views.onboarding.Onboard3Activity" />
@@ -97,11 +98,9 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".views.activity.UserActivity" />
         </activity>
-
         <activity
             android:name=".views.activity.AuthActivity"
             android:exported="false" />
-
         <activity
             android:name=".views.activity.FirefighterActivity"
             android:launchMode="singleTop" />
